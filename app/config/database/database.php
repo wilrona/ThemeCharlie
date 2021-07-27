@@ -15,23 +15,47 @@ function custom_table_example_install()
     global $wpdb;
     global $custom_table_example_db_version;
 
-    $table_name = $wpdb->prefix . 'miss_vote';
+    $table_name = $wpdb->prefix . 'whatsapp';
     $sql        = "CREATE TABLE $table_name (
 			  id int(11) NOT NULL AUTO_INCREMENT,
-			  idcandidat int(11) NULL,
-			  idfacebook varchar(255) NULL,
-			  year varchar (255) NULL,
-			  etape int(11) NULL,
+			  iduser int(11) NULL,
+			  idpostuser int(11) NULL,
+			  idparent int(11) NULL,
+			  typeUser VARCHAR (255) NOT NULL DEFAULT 'e',
+			  codeParrain VARCHAR (255) NULL,
+			  numero VARCHAR (255) NULL,
+			  numeroContact VARCHAR (255) NULL,
+			  numeroWhatsapp varchar (255) NULL,
+			  statut boolean NOT NULL DEFAULT 0,
+			  codeactivation VARCHAR (255) NULL,
+			  sessions VARCHAR (255) NULL,
+			  created_at datetime DEFAULT CURRENT_TIMESTAMP,
+			  updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			  PRIMARY KEY (id)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
 
 
-    $table_name = $wpdb->prefix . 'miss_parrain';
-    $sql_parrain        = "CREATE TABLE $table_name (
+    $table_name = $wpdb->prefix . 'location';
+    $sql_location        = "CREATE TABLE $table_name (
 			  id int(11) NOT NULL AUTO_INCREMENT,
-			  email varchar(255) NULL,
-			  idcandidat int NULL,
-			  parrain int(1) NULL,
+			  lng varchar(255) NULL,
+			  lat varchar(255) NULL,
+			  iduser int(11) NULL,
+			  statut boolean not null default 0,
+			  updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			  PRIMARY KEY (id)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+
+
+    $table_name = $wpdb->prefix . 'paiement';
+    $sql_paiment        = "CREATE TABLE $table_name (
+			  id int(11) NOT NULL AUTO_INCREMENT,
+			  montant float NULL,
+			  feedParrainEscort float NULL ,
+			  parrainEscort_id int(11) NULL ,
+			  feedParraintMembre float NULL ,
+			  parrainMembre int(11) NULL ,
+			  created_at datetime DEFAULT CURRENT_TIMESTAMP,
 			  PRIMARY KEY (id)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
 
@@ -42,7 +66,8 @@ function custom_table_example_install()
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
     dbDelta($sql);
-    dbDelta($sql_parrain);
+    dbDelta($sql_location);
+    dbDelta($sql_paiment);
 
     // save current database version for later use (on upgrade)
     add_option('custom_table_example_db_version', $custom_table_example_db_version);

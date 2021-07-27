@@ -2,143 +2,359 @@
 
 $post_type = tr_post_type('Inscrit', 'Inscrits');
 
+$args = $post_type->getArguments();
+
+$label = [
+    'add_new'            => 'Ajouter',
+];
+
+$args = array_merge( $args, [
+    'labels' => $label ]
+);
+
+$post_type->setArguments( $args );
+
+
 $post_type->setIcon('users');
-$post_type->setArgument('supports', ['title', 'thumbnail'] );
+$post_type->setArgument('supports', ['title'] );
 $post_type->removeArgument('revisions');
 $post_type->setTitlePlaceholder('Nom et prenom');
-$post_type->setAdminOnly();
+//$post_type->setAdminOnly();
 
 $post_type->removeColumn('date');
 
-//$post_type->addColumn('title', true, 'Nom du candidat', null, 'string');
-$post_type->addColumn('codeins', true, 'Code candidat', null, 'string');
 $post_type->addColumn('datenais', true, 'Age', function ($value){
-
-
-//    //date in mm/dd/yyyy format; or it can be in other formats as well
-//    $birthDate = "12/17/1983";
-//    //explode the date to get month, day and year
-//    $birthDate = explode("-", $value);
-//    //get age from date or birthdate
-//    $age = (date("md", date("U", mktime(0, 0, 0, $birthDate[0], $birthDate[1], $birthDate[2]))) > date("md")
-//        ? ((date("Y") - $birthDate[2]) - 1)
-//        : (date("Y") - $birthDate[2]));
 
     list($jour, $mois, $annee) = preg_split('[/]', $value);
     $today['mois'] = date('n');
     $today['jour'] = date('j');
     $today['annee'] = date('Y');
+
     $annees = $today['annee'] - $annee;
-//    if ($today['mois'] <= $mois) {
-//        if ($mois == $today['mois']) {
-//            if ($jour > $today['jour'])
-//                $annees--;
-//        }
-//        else
-//            $annees--;
-//    }
 
     echo $annees . ' ans';
 //    echo $value;
 }, 'string');
-//
-$post_type->addColumn('position', true, 'Ville',  null, 'string');
-////$post_type->addColumn('email', true, 'Email');
-////$post_type->addColumn('phone', true, 'Telephone');
-$post_type->addColumn('year_participe', false, 'Annee part.',  null, 'number');
 
+
+//
+//$post_type->addColumn('position', true, 'Ville',  null, 'string');
+////$post_type->addColumn('email', true, 'Email');
+$post_type->addColumn('phone', true, 'Telephone');
+
+
+$type_inscrit = tr_posts_field('type_user');
+
+$box = tr_meta_box('listing_image')->setLabel('Image validée');
+$box->setPriority('high');
+$box->setCallback(function(){
+    $photos = tr_posts_field('photos');
+
+    $photos_valide = tr_posts_field('photos_valide') ? tr_posts_field('photos_valide') : [];
+
+    if($photos):
+    ?>
+
+    <div uk-slider="center: true" class="uk-position-relative uk-visible-toggle">
+
+        <ul class="uk-slider-items uk-child-width-1-2@m uk-grid-match" uk-lightbox="animation: slide">
+            <?php foreach ($photos as $photo): ?>
+            <li>
+                    <img src="<?= wp_get_attachment_image_src($photo['photo'], 'gallery_user')[0]; ?>" alt="" >
+                    <div class="uk-position-bottom uk-padding-small uk-text-truncate <?php if(in_array($photo['photo'], $photos_valide)): ?> uk-overlay-primary <?php else: ?>uk-overlay-default<?php endif; ?>">
+                        <?php if(in_array($photo['photo'], $photos_valide)): ?>
+                            <span class="uk-text-success">Validée</span>
+                        <?php else: ?>
+                            <span class="uk-text-danger">Non Validée</span>
+                        <?php endif; ?>
+                    </div>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+
+        <a class="uk-position-center-left uk-position-small uk-hidden-hover uk-background-default" href="#" uk-slidenav-previous uk-slider-item="previous"></a>
+        <a class="uk-position-center-right uk-position-small uk-hidden-hover uk-background-default" href="#" uk-slidenav-next uk-slider-item="next"></a>
+
+    </div>
+
+    <?php
+    endif;
+});
+
+if($type_inscrit === 'e' || $type_inscrit === null):
+    $box->apply($post_type);
+endif;
 
 $box1 = tr_meta_box('Presentation')->setLabel('Information personnelle');
 $box1->setCallback(function (){
     $form = tr_form();
 
-    if(get_the_ID()){
-        echo $form->text('codeins')->setLabel('Code du candidat')->setAttribute('disabled', true);
-    }
+    echo $form->editor('post_content')->setLabel('Presentation');
 
-    echo $form->text('nom')->setLabel('Nom du candidat <span class="uk-text-danger">*</span>');
-    echo $form->text('prenom')->setLabel('Prénom du candidat <span class="uk-text-danger">*</span>');
-    echo $form->date('dateNais')->setLabel('Date de naissance <span class="uk-text-danger">*</span>')->setHelp('Le candidat doit avoir plus de 18 ans');
-    echo $form->text('lieu')->setLabel('Lieu de naissance');
-    echo $form->text('nationalite')->setLabel('Nationnalite');
-    echo $form->editor('post_content')->setLabel('Description du candidat');
+    echo $form->toggle('active_content')->setLabel('')->setText('Affichez la présentation ?');
+
+    echo $form->date('datenais')->setLabel('Date de naissance')->setAttribute('disabled', true);;
+    echo $form->text('nationalite')->setLabel('Nationnalite')->setAttribute('disabled', true);
+
+    $type_inscrit = tr_posts_field('type_user');
+
+    if($type_inscrit === 'e' || $type_inscrit === null):
+
+        echo $form->select('sexe')->setLabel('Sexe')->setOptions([
+            'Sexe non défini' => '',
+            'Femme' => 'f',
+            'Homme' => 'm'
+        ])->setAttribute('disabled', true);
+
+        echo $form->text('taille')->setLabel('Taille (en cm)')->setAttribute('disabled', true);
+
+        echo $form->text('poids')->setLabel('Poids (en Kg)')->setAttribute('disabled', true);
+
+        $options = tr_options_field('options.insc_teint') ? tr_options_field('options.insc_teint') : [];
+        $value_option = [
+            'Teint non défini' => ''
+        ];
+        foreach ($options as $option):
+            if($option['active']):
+                $value_option[$option['name']] = strtoupper($option['code']);
+            endif;
+        endforeach;
+
+        echo $form->select('teint')->setOptions($value_option)->setLabel('Selectionnez un teint')->setAttribute('disabled', true);
+
+
+        $options = tr_options_field('options.insc_corps') ? tr_options_field('options.insc_corps') : [];
+        $value_option = [
+            'Type de corps non défini' => ''
+        ];
+        foreach ($options as $option):
+            if($option['active']):
+                $value_option[$option['name']] = strtoupper($option['code']);
+            endif;
+        endforeach;
+
+        echo $form->select('type_corps')->setOptions($value_option)->setLabel('Selectionnez un type de corps')->setAttribute('disabled', true);
+
+    endif;
 
     echo $form->hidden('post_status_old')->setAttribute('value', tr_posts_field('post_status'));
-    echo $form->hidden('post_title_old')->setAttribute('value', tr_posts_field('post_title'));
 });
 
 $box1->apply($post_type);
 
-$box2 = tr_meta_box('adresse')->setLabel('Localisation du candidat');
+$box2 = tr_meta_box('adresse')->setLabel('Localisation et Contact');
 $box2->setCallback(function (){
     $form = tr_form();
 
-    $email = $form->text('email')->setLabel('Adresse Email <span class="uk-text-danger">*</span>');
-    if(get_the_ID()){
-        echo $email->setAttribute('disabled', true);
-        echo $form->hidden('email');
-    }else{
-        echo $email->setHelp('l\'adresse email restera ne sera plus modifiable après enregistrement. Pensez à enregistrer une adresse email correct.');
-    }
+    echo $form->text('phone')->setLabel('Téléphone portable')->setHelp('Numero de telephone utilise pour la mise en relation')->setAttribute('disabled', true);
+    echo $form->text('phonewhatsapp')->setLabel('Téléphone Whatsapp')->setHelp('Numero de telephone utilise pour whatsapp')->setAttribute('disabled', true);
 
-    echo $form->text('phone')->setLabel('Téléphone portable');
+    $type_inscrit = tr_posts_field('type_user');
 
-    $option_ville = tr_options_field('options.insc_ville') ? tr_options_field('options.insc_ville') : [];
-    $villas = [
-        'Selection de la ville' => ''
-    ];
-    foreach ($option_ville as $ville):
-        if($ville['active']):
-            $villas[$ville['ville']] = strtoupper($ville['ville']);
-        endif;
-    endforeach;
+    if($type_inscrit === 'e' || $type_inscrit === null):
 
-    echo $form->select('position')->setOptions($villas)->setLabel('Selectionner une ville <span class="uk-text-danger">*</span>');
+        $option_ville = tr_options_field('options.insc_ville') ? tr_options_field('options.insc_ville') : [];
+        $value_option = [
+            'Ville non définie' => ''
+        ];
+        foreach ($option_ville as $option):
+            if($option['active']):
+                $value_option[$option['name']] = strtoupper($option['code']);
+            endif;
+        endforeach;
 
-    echo $form->editor('adresse')->setLabel('Adresse personnelle');
+        echo $form->select('ville')->setOptions($value_option)->setLabel('Selectionner une ville')->setAttribute('disabled', true);
+
+        echo $form->text('quartier_recevoir')->setLabel('Quartier de reception')->setAttribute('disabled', true);
+
+    endif;
 });
 
 $box2->apply($post_type);
 
-
-$box3 = tr_meta_box('professonnel')->setLabel('Niveau professionnel');
-$box3->setPriority('low');
-$box3->setContext('side');
+$box3 = tr_meta_box('user_service')->setLabel('Service proposé');
 $box3->setCallback(function(){
-    $form = tr_form();
+   ?>
+    <table class="uk-table uk-table-small uk-table-divider">
+        <tr>
+            <td class="uk-text-bold uk-width-1-2">Disponible pour</td>
+            <td >
+                <?php $disponibilite = tr_posts_field('disponibilite'); ?>
+                <?php
 
-    echo $form->textarea('profession')->setLabel('Profession ou diplome en cours')->setAttribute('disabled', true);
-    echo $form->textarea('diplome')->setLabel('Dernier diplome obtenue')->setAttribute('disabled', true);
-    echo $form->textarea('compte')->setLabel('Quel est votre compte facebook ou twitter ?')->setAttribute('disabled', true);
-    echo $form->textarea('participe')->setLabel('Avez-vous déjà participé à un concours de beauté ? Si oui, à quelle occasion')->setAttribute('disabled', true);
+                if($disponibilite){
+                    if($disponibilite === 'out') echo 'Me Déplacer';
+                    if($disponibilite === 'in') echo 'Recevoir';
+                    if($disponibilite === 'both') echo 'Me deplacer - Recevoir';
+                }else {
+
+                    echo 'Non défini';
+
+                }
+                ?>
+            </td>
+        </tr>
+        <tr>
+            <td class="uk-text-bold">Service offert pour</td>
+            <td >
+                <?php $service_offert = tr_posts_field('service_offert'); ?>
+                <?php
+
+                    if($service_offert){
+
+                            if($service_offert === 'm') echo 'Homme';
+                            if($service_offert === 'f') echo 'Femme';
+                            if($service_offert === 'b') echo 'Homme - Femme';
+                    }else {
+
+                        echo 'Non défini';
+
+                    }
+                ?>
+            </td>
+        </tr>
+        <tr>
+            <td class="uk-text-bold">Service proposé</td>
+            <td>
+                <?php $service_propose = tr_posts_field('service_propose'); ?>
+
+
+                <?php
+
+                $option_service = tr_options_field('options.insc_service') ? tr_options_field('options.insc_service') : [];
+
+                if($service_propose):
+                    foreach ($service_propose as $service):
+
+                        $title = '';
+                        $active = false;
+                        foreach ($option_service as $option):
+                            if($option['active'] && strtoupper($option['code']) === strtoupper($service)):
+                                $active = true;
+                                $title = $option['name'];
+                            endif;
+                        endforeach;
+
+                        if($active) echo '<span class="uk-label uk-margin-small-right" uk-tooltip="'.$title.'">'.$service.'</span>';
+
+                    endforeach;
+                else:
+
+                    echo 'Non défini';
+
+                endif;
+                ?>
+            </td>
+        </tr>
+    </table>
+
+    <?php $option_horaire = tr_options_field('options.insc_horaire') ? tr_options_field('options.insc_horaire') : []; ?>
+
+    <?php $service_price = tr_posts_field('service_price'); ?>
+
+    <table class="uk-table uk-table-small uk-table-divider">
+        <caption class="uk-text-bold">Coût horaire des services</caption>
+        <thead>
+            <tr>
+                <th>Duree</th>
+                <th>Prix</th>
+                <th>shots</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php if($service_price): ?>
+            <?php
+                foreach ($service_price as $price):
+
+                    $active = false;
+
+                    foreach ($option_horaire as $option):
+                        if($option['active'] && $option['name'] === $price['name']):
+                            $active = true;
+                        endif;
+                    endforeach;
+
+                    if($active):
+            ?>
+                        <tr>
+                            <td><?= $price['name'] ?></td>
+                            <td><?= $price['amount'] ?> FCFA</td>
+                            <td><?= $price['shot'] ?></td>
+                        </tr>
+            <?php
+                    endif;
+
+                endforeach;
+            ?>
+        <?php else: ?>
+            <tr>
+                <td colspan="3"><h3 class="uk-text-center">Aucune information</h3></td>
+            </tr>
+        <?php endif; ?>
+        </tbody>
+    </table>
+
+    <?php
 });
-$box3->apply($post_type);
 
+if($type_inscrit === 'e' || $type_inscrit === null):
+    $box3->apply($post_type);
+endif;
 
-$box4 = tr_meta_box('personnel')->setLabel('Autres Informations');
-$box4->setCallback(function(){
-    $form = tr_form();
-
-    echo $form->textarea('signe')->setLabel('Signe distinctif ?')->setAttribute('disabled', true);
-
-    echo $form->text('enfant')->setLabel('Combien d’enfant (s) avez-vous ?')->setAttribute('disabled', true);
-
-    echo $form->text('taille')->setLabel('Taille sans talons (en cm)')->setAttribute('disabled', true);
-
-    echo $form->text('casier')->setLabel('Avez vous un casier judiciaire ?')->setAttribute('disabled', true);
-});
-$box4->apply($post_type);
-
-$box5 = tr_meta_box('participation')->setLabel('Participation');
+$box5 = tr_meta_box('user_infos')->setLabel('Infos de l\'utilisateur');
 $box5->setPriority('high');
 $box5->setContext('side');
 $box5->setCallback(function(){
     $form = tr_form();
 
-    echo $form->text('year_participe')->setLabel('Annee')->setAttributes(array('disabled' => true, 'value' => tr_options_field('options.ins_year')));
-    echo $form->hidden('year_participe')->setAttributes(array('value' => tr_options_field('options.ins_year')));
+    $user_id = tr_posts_field('user_id');
+
+    if($user_id):
+
+        $user_data = get_user_by('id', $user_id);
+
+        echo $form->text('pseudo')->setLabel('Pseudo')->setAttributes(['disabled' => true, 'value' => $user_data->user_login]);
+
+    endif;
+
+    echo $form->select('type_user')->setLabel('Type inscrit')->setOptions([
+        'Selectionnez le type' => '',
+        'Escorte' => 'e',
+        'Membre' => 'm'
+    ])->setAttribute('disabled', true);
+
+    echo $form->toggle('active')->setLabel('')->setText('Compte actif ?');
+
 });
+
 $box5->apply($post_type);
+
+$box4 = tr_meta_box('user_image')->setLabel('Photo à valider de l\'utilisateur');
+$box4->setContext('side');
+$box4->setCallback(function(){
+    $form = tr_form();
+
+    echo $form->toggle('valid_photo')->setLabel('')->setText('Validez les photos ?')->setSetting('default', false);
+    echo $form->toggle('delete_photo')->setLabel('')->setText('Supprimer les photos ?')->setSetting('default', false);
+
+    $repeater = $form->repeater('photos')->setFields([
+        $form->image('photo')->setSettings(['button' => 'Ajouter une image', 'clear' => 'Effacer'])
+    ])->setSettings([
+        'add_button' => 'Ajouter les photos',
+        'controls' => [
+            'contract' => 'Contracter',
+            'flip' => 'Renverser',
+            'limit' => 'Limite de photo atteint',
+            'clear' => 'Tout effacer'
+        ]
+    ])->setLabel('Liste des photos');
+
+    echo $repeater;
+});
+
+if($type_inscrit === 'e' || $type_inscrit === null):
+    $box4->apply($post_type);
+endif;
 
 
 add_filter( 'bulk_actions-edit-inscrit', 'inscrit_bulk_actions' );
@@ -148,7 +364,7 @@ function inscrit_bulk_actions( $actions ){
 }
 
 
-add_action('wp_trash_post', 'prevent_inscrit_deletion');
+//add_action('wp_trash_post', 'prevent_inscrit_deletion');
 function prevent_inscrit_deletion($postid){
     $post = get_post($postid);
     if ($post->post_type == 'inscrit') {
@@ -157,16 +373,16 @@ function prevent_inscrit_deletion($postid){
 }
 
 function inscrit_action_row($actions, $post){
-    //check for your post type
+
     if ($post->post_type =="inscrit"){
         unset( $actions[ 'trash' ] );
-        $actions['print'] = '<a href="'.tr_redirect()->toHome('/inscrit/formulaire/'.tr_posts_field('codeins', $post->ID))->url.'" target="_blank">Imprimer</a>';
+//        $actions['print'] = '<a href="'.tr_redirect()->toHome('/inscrit/formulaire/'.tr_posts_field('codeins', $post->ID))->url.'" target="_blank">Imprimer</a>';
     }
 
     return $actions;
 }
 
-add_filter('post_row_actions','inscrit_action_row', 10, 2);
+//add_filter('post_row_actions','inscrit_action_row', 10, 2);
 
 function inscrit_admin_notice(){
     global $post_type;
@@ -186,10 +402,9 @@ function inscrit_admin_notice(){
 
     }
 }
-add_action('admin_notices', 'inscrit_admin_notice');
+//add_action('admin_notices', 'inscrit_admin_notice');
 
-
-add_filter('views_edit-inscrit','export_inscrit_filter');
+//add_filter('views_edit-inscrit','export_inscrit_filter');
 
 function export_inscrit_filter($views){
     $url = tr_redirect()->toHome('/inscrit/export/?s='.$_GET['s'].'&slug='.$_GET['slug'].'&slug-year='.$_GET['slug-year'])->url;

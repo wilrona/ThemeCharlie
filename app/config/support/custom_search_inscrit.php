@@ -105,15 +105,19 @@ function wisdom_filter_tracked_plugins() {
         $inscrit = new Inscrit();
         $inscrits = $inscrit->findAll()->published()->get();
 
-        foreach ($inscrits as $ins):
+        if($inscrits):
 
-            $date = tr_posts_field('year_participe', $ins->ID);
+            foreach ($inscrits as $ins):
 
-            if(!in_array($date, $plugins)):
-                $plugins[] = $date;
-            endif;
+                $date = tr_posts_field('year_participe', $ins->ID);
 
-        endforeach;
+                if(!in_array($date, $plugins)):
+                    $plugins[] = $date;
+                endif;
+
+            endforeach;
+
+        endif;
 
         $current_plugin = '';
         if( isset( $_GET['slug'] ) ) {

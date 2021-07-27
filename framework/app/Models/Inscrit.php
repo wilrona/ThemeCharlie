@@ -8,25 +8,30 @@ class Inscrit extends WPPost
     protected $postType = 'inscrit';
 
     protected $fillable = [
-        'codeins',
-        'nom',
-        'prenom',
-        'datenais',
-        'lieu',
-        'nationalite',
         'post_content',
-        'adresse',
-        'email',
-        'position',
-        'profession',
-        'diplome',
-        'compte',
-        'signe',
-        'enfant',
+        'datenais',
+        'nationalite',
+        'sexe',
         'taille',
-        'casier',
+        'poids',
+        'type_user',
+        'teint',
+        'type_corps',
         'phone',
-        'year_participe'
+        'phonewhatsapp',
+        'ville',
+        'disponibilite',
+        'service_offert',
+        'service_propose',
+        'service_price',
+        'quartier_recevoir',
+        'user_id',
+        'photos',
+        'photos_valide',
+        'photos_a_valider',
+        'active_content',
+        'active',
+        'post_author'
     ];
 
 }

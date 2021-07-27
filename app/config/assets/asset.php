@@ -13,6 +13,7 @@ function themeprefix_bootstrap_modals()
     wp_register_script('app', get_stylesheet_directory_uri() . '/js/app.js', '', '1', true);
 
 
+    wp_register_style('main', get_stylesheet_directory_uri() . '/css/main.css', '', '', 'all');
     wp_register_style('uikit', get_stylesheet_directory_uri() . '/css/uikit.css', '', '', 'all');
     wp_register_style('all', get_stylesheet_directory_uri() . '/css/all.css', '', '', 'all');
     // wp_register_style('dataTable', get_stylesheet_directory_uri() . '/css/dataTables.css', '', '', 'all');
@@ -27,9 +28,10 @@ function themeprefix_bootstrap_modals()
     wp_enqueue_script('dataTableUikit');
     wp_enqueue_script('app');
 
+    wp_enqueue_style('main');
     wp_enqueue_style('uikit');
     wp_enqueue_style('all');
-    wp_enqueue_style('dataTable');
+//    wp_enqueue_style('dataTable');
     wp_enqueue_style('dataTableUikit');
     wp_enqueue_style('app');
 }
@@ -49,6 +51,7 @@ function enqueue_select2_jquery()
 {
     wp_register_style('select2css', get_stylesheet_directory_uri() . '/css/select2.css', false, '1.0', 'all');
     wp_register_style('uikit', get_stylesheet_directory_uri() . '/css/uikit.css', '', '', 'all');
+    wp_register_style('admin', get_stylesheet_directory_uri() . '/css/admin.css', '', '', 'all');
 
     wp_register_script('select2', get_stylesheet_directory_uri() . '/js/select2.min.js', '', '1.0', true);
     wp_register_script('uikit', get_stylesheet_directory_uri() . '/js/uikit.js', '', '1', true);
@@ -57,6 +60,7 @@ function enqueue_select2_jquery()
 
     wp_enqueue_style('uikit');
     wp_enqueue_style('select2css');
+    wp_enqueue_style('admin');
 
 
     wp_enqueue_script('uikit');
@@ -180,6 +184,7 @@ function datepicker()
     wp_register_script('datepicker', get_stylesheet_directory_uri() . '/js/datepicker.js', '', '1.0', true);
     wp_register_script('datepicker.fr', get_stylesheet_directory_uri() . '/js/datepicker.fr-FR.js', '', '1.0', true);
     wp_register_script('repeater', get_stylesheet_directory_uri() . '/js/jquery.repeater.js', array('jquery'), '1.0', true);
+
     wp_enqueue_style('datepickercss');
     wp_enqueue_script('datepicker');
     wp_enqueue_script('datepicker.fr');
@@ -319,10 +324,34 @@ function datepicker_script()
                 })
             }
 
+            $(document).on("input", ".numeric", function(e) {
+                this.value = this.value.replace(/[^\d]/,'');
+            });
+
+            $(".numeric").on('paste',function(e) {
+
+                if(gBrowser=='IE') {
+                    var clipboardData, pastedData;
+                    clipboardData = e.clipboardData || window.clipboardData;
+                    pastedData = clipboardData.getData('Text');
+
+                }
+                else if((gBrowser=='Firefox')|| (gBrowser=='Chrome')){
+                    var pastedData = (e.originalEvent || e).clipboardData.getData('text/plain');
+                    window.document.execCommand('insertText', false, pastedData)
+                }
+                if(Math.floor(pastedData) == pastedData && $.isNumeric(pastedData)){
+                    $(this).val($(this).val().replace(/[^\d]/g,''));
+                }
+                else{
+                    return false;
+                }
+            });
+
 
 
             // Listen for input event on numInput.
-            $('#number').onkeydown = function(e) {
+            $('.number').onkeydown = function(e) {
                 if (!((e.keyCode > 95 && e.keyCode < 106) ||
                         (e.keyCode > 47 && e.keyCode < 58) ||
                         e.keyCode == 8)) {

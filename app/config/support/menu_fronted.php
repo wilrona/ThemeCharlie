@@ -31,9 +31,9 @@ function need_walker_texas_ranger($args)
     //		$args['walker'] = new CSS_Menu_Maker_Walker();
     //	}
     //
-    //	if($args['theme_location'] == 'footer-left-nav'){
-    //		$args['walker'] = new CSS_Menu_Maker_Walker_Footer();
-    //	}
+    if($args['theme_location'] == 'footer'){
+        $args['walker'] = new CSS_Menu_Maker_Walker_Footer();
+    }
 
     return $args;
 }

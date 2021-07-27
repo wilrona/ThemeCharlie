@@ -30,7 +30,8 @@
         "typerocket/plugin-dev": "^4.0",
         "facebook/graph-sdk": "^5.7",
         "spipu/html2pdf": "^5.2",
-        "anthonybudd/wp_mail": "^2.0"
+        "anthonybudd/wp_mail": "^2.0",
+        "twig/twig": "^2.0"
     },
     "autoload": {
         "psr-4": {

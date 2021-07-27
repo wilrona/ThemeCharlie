@@ -15,18 +15,12 @@ $form = tr_form()->useJson()->setGroup($this->getName());
 
     $company_infos = function () use ($form) {
 
-        echo '<h2 class="uk-padding-remove-bottom uk-text-center">Information de l\'entreprise</h2>';
-        echo $form->text('online')->setLabel('Téléphone Online');
+        echo '<h2 class="uk-padding-remove-bottom uk-text-center uk-margin-top">Information de l\'entreprise</h2>';
+        echo $form->text('online')->setLabel('Téléphone Whatsapp');
         echo '<hr />';
 
-        echo $form->text('lien_facebook')->setLabel('Lien de la Facebook');
-        echo $form->text('lien_youtube')->setLabel('Lien de la page Youtube');
-        echo $form->text('lien_instagram')->setLabel('Lien de la page Instagram');
-
-
-        echo '<hr />';
-
-        echo $form->text('form_contact')->setLabel('Formulaire de contact du site')->setHelp('Utiliser contact form 7');
+        echo $form->text('secret_prefix')->setLabel('Le prefix du code secret');
+        echo $form->text('activa_prefix')->setLabel('Le prefix du code d\'activation');
 
         echo '<hr />';
 
@@ -35,162 +29,158 @@ $form = tr_form()->useJson()->setGroup($this->getName());
         echo $form->image('footer_image')->setLabel('Image du slogan du pied de page')->setSetting('button', 'Insérer l\'image slogan');
     };
 
-    $param_facebook = function () use ($form){
+    $param_villes = function () use ($form) {
 
-        echo '<h2 class="uk-padding-remove-bottom uk-text-center">Plugins Page Facebook</h2>';
-
-        echo $form->text('widget_appid')->setLabel('App ID');
-        echo $form->text('widget_link')->setLabel('Lien de la page');
-        echo $form->text('widget_height')->setLabel('Hauteur')->setHelp('min. 70');
-        echo $form->text('widget_width')->setLabel('Largeur')->setHelp('entre min. 180 et max 500');
-
-        echo '<div class="uk-grid uk-child-width-1-2">';
-        echo '<div>';
-        echo $form->toggle('widget_small-height')->setLabel('')->setText('Utiliser une en-tête plus petite')->setAttribute('value', 1);
-
-        echo '</div>';
-
-        echo '<div>';
-        echo $form->toggle('widget_adapt-container_width')->setLabel('')->setText('Adapter à la largeur du plugin container')->setAttribute('value', 1);
-
-        echo '</div>';
-
-        echo '<div>';
-        echo $form->toggle('widget_hide-cover')->setLabel('')->setText('Masquer la photo de couverture')->setAttribute('value', 1);
-
-        echo '</div>';
-
-        echo '<div>';
-        echo $form->toggle('widget_show-facepile')->setLabel('')->setText('Afficher les visages des ami(e)s')->setAttribute('value', 1);
-
-        echo '</div>';
-        echo '</div>';
-
-    };
-
-    $param_inscription = function () use ($form) {
-
-
-        echo '<h2 class="uk-padding-remove-bottom uk-text-center">Configuration inscription facebook</h2>';
-
-        echo '<div class="uk-text-center uk-text-danger">Cette configuration sera le même si vous decidez d\'activer les votes facebook sur le site.</div>';
-
-        echo '<div class="uk-grid uk-child-width-1-2">';
-
-        echo '<div>';
-        echo $form->text('facebook_appid')
-            ->setLabel('Facebook AppId');
-
-        echo '</div>';
-
-
-        echo '<div>';
-        echo $form->text('facebook_version')->setLabel('Facebook AppId version')->setAttribute('value', 'v2.8');
-
-        echo '</div>';
-
-        echo '</div>';
-
-        echo $form->text('facebook_appsecret')->setLabel('Facebook App Secret')->setHelp('<span class="uk-text-danger">Cette information est utile pour la gestion des votes</span>');
-
-        echo '<hr />';
-
-        echo '<h2 class="uk-padding-remove uk-text-center">Parametre Inscription</h2>';
-
-        echo '<div class="uk-grid uk-child-width-1-2">';
-
-        echo '<div>';
-        echo $form->text('ins_year')
-            ->setType('number')
-            ->setLabel('Annee des inscriptions')
-            ->setAttribute('value', intval(date("Y")));
-
-        echo '</div>';
-        echo '<div>';
-        echo $form->toggle('ins_active')->setLabel('')->setText('Activer les inscriptions')->setAttribute('value', 1);
-
-        echo '</div>';
-        echo '</div>';
-
-        echo $form->text('ins_buttonMessage')
-            ->setLabel('Message sur le bouton')
-            ->setHelp('Ce Message se trouvera à l\'intérieur du bouton d\'inscription');
-
-        echo $form->file('auth_parental')
-            ->setLabel('Fichier d\'autorisation parental')
-            ->setHelp('ce fichier sera envoyer pendant les inscriptions aux candidats. il doit être au format PDF.')
-            ->setSetting('type', 'pdf')
-            ->setSetting('button', 'Inserer le fichier');
+        echo '<h2 class="uk-padding-remove uk-text-center uk-margin-top">Paramètre des villes</h2>';
 
         echo $form->repeater('insc_ville')->setFields([
-            $form->text('ville')->setLabel('Nom de la ville'),
+            $form->text('name')->setLabel('Nom de la ville'),
             $form->text('code')->setLabel('Code de la ville'),
             $form->toggle('active')->setText('Inscription dans cette ville ?')->setLabel('')
-        ])->setLabel('Liste des lieux de rencontre')->setSetting('button', 'Ajouter une ligne');
+        ])->setLabel('Liste des villes')->setSettings([
+            'add_button' => 'Ajouter une ligne',
+            'controls' => [
+                'contract' => 'Contracter',
+                'flip' => 'Renverser',
+                'clear' => 'Tout effacer'
+            ]
+        ]);
 
     };
 
-    $param_vote = function () use ($form){
+    $config_page = function () use ($form){
+        
+        echo '<h2 class="uk-padding-remove-bottom uk-text-center uk-margin-top">Configuration des pages</h2>';
 
-        echo '<h2 class="uk-padding-remove-bottom uk-text-center">Gestion des votes</h2>';
-
-        echo '<div class="uk-grid uk-child-width-1-2">';
-
-        echo '<div>';
-
-        echo $form->toggle('vote_active')->setLabel('Activer les votes par facebook')->setAttribute('value', 1);
-
-        echo '</div>';
-        echo '<div class="uk-text-danger">';
-        echo 'Si vous activez les votes par facebook, vous devez au préalable avoir convenablement rempli les informations necessaires de la section <b> Parametre Inscription -> Configuration inscription facebook </b>';
-
-        echo '</div>';
-        echo '</div>';
-
-//        echo '<hr />';
-//
-//        echo $form->text('vote_number')
-//            ->setLabel('Numero de téléphone de vote')
-//            ->setHelp('<span class="uk-text-warning">Ce numero de téléphone sera affiché si le vote par facebook n\'est pas activé.</span>');
+        echo $form->search('page_connexion')->setLabel('Page de connexion')->setPostType('page');
+        echo $form->search('page_inscription_membre')->setLabel('Page d\'inscription des membres')->setPostType('page');
+        echo $form->search('page_inscription')->setLabel('Page d\'inscription des escortes')->setPostType('page');
+        echo $form->search('page_dashboard')->setLabel('Page de dashboard')->setPostType('page');
+        echo $form->search('page_service')->setLabel('Page de dashboard service')->setPostType('page');
+        echo $form->search('page_photo')->setLabel('Page de dashboard photo')->setPostType('page');
+        echo $form->search('page_condition')->setLabel('Page de condition d\'utilisation')->setPostType('page');
 
     };
 
-    $param_link = function () use ($form){
+    $param_teint = function () use ($form) {
 
-        echo '<h2 class="uk-padding-remove-bottom uk-text-center">Liens de redirection</h2>';
+        echo '<h2 class="uk-padding-remove uk-text-center uk-margin-top">Paramètre des teints</h2>';
 
-        echo $form->search('page_like')->setLabel('Lien vers la page Like page facebook')->setPostType('page');
-//
-        echo $form->search('page_reglement')->setLabel('Lien vers la page de règlement')->setPostType('page');
-
-        echo $form->search('page_form')->setLabel('Lien vers la page du formulaire d\'inscription')->setPostType('page');
-
-        echo $form->search('page_candidat_exist')->setLabel('Lien vers la page de candidat existant')->setPostType('page');
-
-        echo $form->search('page_parrain')->setLabel('Lien vers la page du formulaire de parrainage')->setPostType('page');
-
-        echo $form->search('page_end_inscription')->setLabel('Lien vers la page de confirmation de l\'inscription')->setPostType('page');
-
-        echo $form->search('page_vote_confirm')->setLabel('Lien vers la page de confirmation de vote')->setPostType('page');
-
-        echo $form->search('page_vote_exist')->setLabel('Lien vers la page de vote realisée')->setPostType('page');
+        echo $form->repeater('insc_teint')->setFields([
+            $form->text('name')->setLabel('Nom du teint'),
+            $form->text('code')->setLabel('Code du teint'),
+            $form->toggle('active')->setText('Afficher ce teint ?')->setLabel('')
+        ])->setLabel('Liste des teints')->setSettings([
+            'add_button' => 'Ajouter une ligne',
+            'controls' => [
+                'contract' => 'Contracter',
+                'flip' => 'Renverser',
+                'clear' => 'Tout effacer'
+            ]
+        ]);
 
     };
 
+    $param_service = function () use ($form) {
 
+        echo '<h2 class="uk-padding-remove uk-text-center uk-margin-top">Paramètre des services</h2>';
 
+        echo $form->repeater('insc_service')->setFields([
+            $form->text('name')->setLabel('Nom du service'),
+            $form->text('code')->setLabel('Code du service'),
+            $form->toggle('active')->setText('Afficher ce service ?')->setLabel('')
+        ])->setLabel('Liste des services')->setSettings([
+            'add_button' => 'Ajouter une ligne',
+            'controls' => [
+                'contract' => 'Contracter',
+                'flip' => 'Renverser',
+                'clear' => 'Tout effacer'
+            ]
+        ]);
 
+    };
+
+    $param_corps = function () use ($form) {
+
+        echo '<h2 class="uk-padding-remove uk-text-center uk-margin-top">Paramètre des types de corps</h2>';
+
+        echo $form->repeater('insc_corps')->setFields([
+            $form->text('name')->setLabel('Nom du type de corps'),
+            $form->text('code')->setLabel('Code du type de corps'),
+            $form->toggle('active')->setText('Afficher ce type de corps ?')->setLabel('')
+        ])->setLabel('Liste des types de corps')->setSettings([
+            'add_button' => 'Ajouter une ligne',
+            'controls' => [
+                'contract' => 'Contracter',
+                'flip' => 'Renverser',
+                'clear' => 'Tout effacer'
+            ]
+        ]);
+
+    };
+
+    $param_horaire = function () use ($form) {
+
+        echo '<h2 class="uk-padding-remove uk-text-center uk-margin-top">Paramètre des horaires</h2>';
+
+        echo $form->repeater('insc_horaire')->setFields([
+            $form->text('name')->setLabel('Nombre d\'heure'),
+            $form->toggle('active')->setText('Afficher cet horaire ?')->setLabel('')
+        ])->setLabel('Liste des horaires')->setSettings([
+            'add_button' => 'Ajouter une ligne',
+            'controls' => [
+                'contract' => 'Contracter',
+                'flip' => 'Renverser',
+                'clear' => 'Tout effacer'
+            ]
+        ]);
+
+    };
+
+    $param_indication = function () use ($form){
+
+        echo '<h2 class="uk-padding-remove uk-text-center uk-margin-top">Paramètre des indications des pays</h2>';
+
+        echo $form->repeater('indications')->setFields([
+            $form->text('indication')->setLabel('Numero de l\'indication'),
+            $form->text('pays')->setLabel('Pays de l\'indication'),
+            $form->toggle('active')->setText('Utiliser ?')->setLabel('')
+        ])->setLabel('Liste des indications')->setSettings([
+            'add_button' => 'Ajouter une ligne',
+            'controls' => [
+                'contract' => 'Contracter',
+                'flip' => 'Renverser',
+                'clear' => 'Tout effacer'
+            ]
+        ]);
+
+    };
+
+    $param_conseiller = function () use ($form){
+        echo '<h2 class="uk-padding-remove uk-text-center uk-margin-top">Paramètre des numéros des teleconseillers</h2>';
+
+        echo $form->items('conseiller')->setLabel('Liste des numéros des téléconseillers')->setSettings([
+            'button' => 'Ajouter un numéro',
+            'controls' => [
+                'clear' => 'Tout effacer'
+            ]
+        ]);
+    };
     // Save
     $save = $form->submit('Enregistrement');
 
     // Layout
     tr_tabs()->setSidebar($save)
-        ->addTab('Information Entreprise', $company_infos)
-        ->addTab('Plugin Page Facebook', $param_facebook)
-        ->addTab('Parametre inscription', $param_inscription)
-        ->addTab('Gestion des votes', $param_vote)
-        ->addTab('Liens de redirection', $param_link)
-        ->render('box');
+        ->addTab('Entreprise', $company_infos)
+        ->addTab('Pages', $config_page)
+        ->addTab('Villes', $param_villes)
+        ->addTab('Teints', $param_teint)
+        ->addTab('Services', $param_service)
+        ->addTab('Types de corps', $param_corps)
+        ->addTab('Horaires', $param_horaire)
+        ->addTab('Indications', $param_indication)
+        ->addTab('Teleconseiller', $param_conseiller)
+        ->render();
     echo $form->close();
     ?>
 

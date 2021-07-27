@@ -86,6 +86,58 @@ function wpse66093_no_admin_access()
 }
 add_action('admin_init', 'wpse66093_no_admin_access', 100);
 
+function redirect_user() {
+     global $post_type;
+
+    $login_page = array(
+        tr_options_field('options.page_dashboard'),
+        tr_options_field('options.page_photo'),
+        tr_options_field('options.page_service')
+    );
+
+    if($_SERVER['REQUEST_METHOD'] === 'GET'):
+
+        if (is_user_logged_in()) {
+
+            $current_user = _wp_get_current_user();
+
+            if (!is_page($login_page)):
+                $return_url = esc_url(get_the_permalink(tr_options_field('options.page_dashboard')));
+                wp_redirect($return_url);
+                exit;
+
+            else:
+
+                if(!is_page(tr_options_field('options.page_photo'))):
+
+                    $what_query = tr_query()->table('wp_whatsapp')->where('iduser', '=', $current_user->ID)->first();
+
+                    // Si l'utilisateur n'a pas de photo, le rediriger vers la page de gestion des photos.
+                    if (!tr_posts_field('photos', $what_query['idpostuser'])):
+                        $return_url = esc_url(get_the_permalink(tr_options_field('options.page_photo')));
+                        wp_redirect($return_url);
+                        exit;
+                    endif;
+
+                endif;
+
+            endif;
+
+        }else{
+
+            if (is_page($login_page)):
+                $return_url = esc_url( home_url('/') );
+                wp_redirect( $return_url );
+                exit;
+
+            endif;
+
+        }
+
+    endif;
+}
+add_action( 'template_redirect', 'redirect_user' );
+
 
 //
 //add_filter ("wp_mail_content_type", "my_awesome_mail_content_type");
@@ -120,7 +172,7 @@ function remove_menus()
 	//	remove_menu_page( 'index.php' );                  //Dashboard
 	//	remove_menu_page( 'jetpack' );                    //Jetpack*
 	//	remove_menu_page( 'edit.php' );                   //Posts
-	remove_menu_page('upload.php');                 //Media
+//	remove_menu_page('upload.php');                 //Media
 	//	remove_menu_page( 'edit.php?post_type=page' );    //Pages
 	remove_menu_page('edit-comments.php');          //Comments
 	//	remove_menu_page( 'themes.php' );                 //Appearance

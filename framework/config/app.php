@@ -92,6 +92,10 @@ return [
         'theme' => 'templates',
     ],
 
+    'api_keys' => [
+        'google_maps' => 'AIzaSyCZz_Pizm04BAJIVGqn8fr1ywWEhZ42KPY'
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Assets Version

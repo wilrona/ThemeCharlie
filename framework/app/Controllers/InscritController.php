@@ -2,10 +2,10 @@
 namespace App\Controllers;
 
 use App\Models\Inscrit;
-use App\Models\Parrain;
-use App\Models\Vote;
-use Spipu\Html2Pdf\Html2Pdf;
+use App\Models\Whatsapp;
+use Spipu\Html2Pdf\Tag\Html\Ins;
 use TypeRocket\Controllers\WPPostController;
+use TypeRocket\Exceptions\ModelException;
 use TypeRocket\Http\Request;
 use TypeRocket\Http\Response;
 
@@ -13,618 +13,1226 @@ class InscritController extends WPPostController
 {
     protected $modelClass = Inscrit::class;
 
+    public function connectOne(){
 
-    public function inscription(){
-
-        $this->validation = [
-            'nom' => 'required',
-            'prenom' => 'required',
-            'datenais' => 'required',
-            'email' => 'required|email',
-            'position' => 'required',
-            'compte' => 'required',
-            'taille' => 'required'
+        $validation = [
+            'pseudo' => 'required'
         ];
 
-
         $fields = $this->request->getFields();
 
-        if($this->invalid()){
-            flash('error-data-inscription', 'Des champs obligatoire n\'ont pas été renseigné', 'uk-text-danger');
-            return tr_redirect()->back()->withFields($fields);
-        }else{
+        $validator = tr_validator($validation, $fields);
 
-            if($this->Age($fields['datenais'])) {
+        $validator->errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'pseudo:required' => 'Le pseudo ou le numéro whatsapp est obligatoire'
+            )
+        ];
 
-                $post_title = $fields['nom'];
-                if ($fields['prenom']) {
-                    $post_title .= ' ' . $fields['prenom'];
-                }
+        $validator->validate();
 
-                if($fields['ID']):
-                    $id = $fields['ID'];
-                    wp_update_post(array(
-                        'ID' => $id,
-                        'post_title' => $post_title
-                    ));
-                else:
-                    $id = wp_insert_post(array(
-                        'post_type' => 'inscrit',
-                        'post_title' => $post_title,
-                        'post_status' => 'publish'
-                    ));
-                endif;
+        if($validator->getErrors()):
 
-                $parrain = new Parrain();
-                $exist_parrain = $parrain->where('email', '=', strtolower($fields['email']))->first();
-                if(!$exist_parrain){
-                    $parrain->email = strtolower($fields['email']);
-                    $parrain->parrain = false;
-                    $parrain->save();
-                }
-
-                if (empty(tr_posts_field('codeins', $id))):
-                    $option_ville = tr_options_field('options.insc_ville') ? tr_options_field('options.insc_ville') : [];
-                    $codecell = '';
-                    foreach ($option_ville as $ville):
-                        if (strtoupper($ville['ville']) == strtoupper($fields['position'])):
-                            $codecell = $ville['code'] . '' . $this->random(4);
-                        endif;
-                    endforeach;
-
-                    $fields['codeins'] = $codecell;
-                endif;
-
-                $time = \DateTime::createFromFormat('d/m/Y', $fields['datenais']);
-
-                $newformat = $time->format('Y-m-d');
-
-                $fields['datenais_format'] = $newformat;
-
-                $fields['year_participe'] = tr_options_field('options.ins_year');
-
-                $post = $this->model->findById($id);
-
-                $post->update($fields);
-
-                $email = \WP_Mail::init();
-                $email->subject('Inscription Reussie');
-                $email->to(strtolower($fields['email']));
-                $email->template(get_template_directory() .'/email/inscription.php', ['candidat' => $post]);
-                $email->sendAsHTML(true);
-                $email->send();
-
-                return tr_redirect()->toUrl(get_post_permalink(tr_options_field('options.page_parrain')).'?idfacebook='.$fields['idfacebook']);
-
-            }else{
-                flash('error-data-inscription', 'Le candidat n\'est pas éligible. Pensez à verifier votre date de naissance', 'uk-text-danger');
-                return tr_redirect()->back()->withFields($fields);
-            }
-
-
-        }
-
-    }
-
-
-    public function parrain(){
-
-        $fields = $this->request->getFields();
-
-        $post = $this->model->findById($fields['ID']);
-
-        foreach ($fields['parrain'] as $parrain):
-
-            $parr = new Parrain();
-
-            $exist = $parr->where('email', '=', strtolower($parrain['email']))->first();
-
-            if(!$exist):
-                $parr->email = strtolower($parrain['email']);
-                $parr->parrain = true;
-                $parr->save();
-
-
-                $email = \WP_Mail::init();
-                $email->subject('Demande de parrainage');
-                $email->to(strtolower($parrain['email']));
-                $email->template(get_template_directory() .'/email/parrain.php', ['candidat' => $post]);
-                $email->sendAsHTML(true);
-                $email->send();
-
-            endif;
-
-        endforeach;
-
-        return tr_redirect()->toUrl(get_post_permalink(tr_options_field('options.page_end_inscription')));
-
-    }
-
-    public function resend($codeins=null){
-
-        $args = array(
-            'post_type' => 'inscrit'
-        );
-
-        if(!$codeins):
-
-            $posts = query_posts($args);
-
-            foreach ($posts as $post):
-
-
-                $email = \WP_Mail::init();
-                $email->subject('Reconfirmation du lieu de casting et de votre formulaire d\'inscription');
-                $email->to(strtolower(tr_posts_field('email', $post->ID)));
-                $email->template(get_template_directory() .'/email/inscription.php', ['candidat' => $post]);
-                $email->sendAsHTML(true);
-                $email->send();
-
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-connexion', $error, 'uk-text-danger');
             endforeach;
+
+            return tr_redirect()->toUrl(get_post_permalink(tr_options_field('options.page_connexion')))->withFields($fields);
 
         else:
 
-            $codeins = preg_split('[/]', $codeins)[0];
+            if(username_exists($fields['pseudo'])):
 
-            $args['meta_query'] = array(
-                    array(
-                        'key' => 'codeins',
-                        'value' => $codeins,
-                        'compare' => '='
-                    )
-                );
+                $correct = $this->LoginSendPassword($fields['pseudo']);
 
-            $post = query_posts($args);
+                if($correct):
 
-            $email = \WP_Mail::init();
-            $email->subject('Reconfirmation du lieu de casting et de votre formulaire d\'inscription');
-            $email->to(strtolower(tr_posts_field('email', $post->ID)));
-            $email->template(get_template_directory() .'/email/inscription.php', ['candidat' => $post[0]]);
-            $email->sendAsHTML(true);
-            $email->send();
+                    flash('infos-data-connexion', 'Message envoyé à votre numero whatsapp avec succès', 'uk-text-success');
+                    return tr_redirect()->toHome('/connexion/two');
 
-        endif;
+                else:
 
-        return tr_view('email.resend');
+                    flash('error-data-connexion', 'Ce pseudo correspond à un compte membre. Vous n\'avez pas le droit de vous connecter.', 'uk-text-danger');
+                    return tr_redirect()->back()->now();
 
-    }
-
-    public function vote($idcandidat, $idselection){
-
-        $id = preg_split('[/]', $idcandidat)[0];
-        $idSelection = preg_split('[/]', $idselection)[0];
-
-
-        if(isset($_SESSION) && isset($_SESSION['token_fb_vote'])) {
-
-            $facebook = new FacebookController(new Request(), new Response());
-
-            $fb = $facebook->set_facebook();
-            $fb->setDefaultAccessToken($_SESSION['token_fb_vote']);
-
-            $response = $fb->get('/me?locale=en_US&fields=id,email');
-            $userNode = $response->getGraphUser();
-
-//            $post = $this->model->findById($id);
-
-            $idfacebook = tr_posts_field('idfacebook', $id);
-            $current_year = tr_options_field('options.ins_year');
-
-            $miss_vote = new Vote();
-            $exit = $miss_vote->where('idfacebook', '=', $idfacebook)->where('year', '=', $current_year)->where('etape', '=', $idSelection)->count();
-
-            if(!$exit):
-
-                $miss_vote->idcandidat = $id;
-                $miss_vote->idfacebook =  $idfacebook;
-                $miss_vote->year = $current_year;
-                $miss_vote->etape = $idSelection;
-
-                $miss_vote->save();
-
-                $parr = new Parrain();
-
-                $exist = $parr->where('email', '=', strtolower($userNode->getField('email')))->first();
-
-                if(!$exist):
-                    $parr->email = strtolower($userNode->getField('email'));
-                    $parr->parrain = false;
-                    $parr->save();
                 endif;
-
-                return tr_redirect()->toUrl(get_post_permalink(tr_options_field('options.page_vote_confirm')));
-
-            else:
-
-                return tr_redirect()->toUrl(get_post_permalink(tr_options_field('options.page_vote_exist')));
 
             endif;
 
-        }else{
-            session_destroy();
-            return tr_redirect()->back()->now();
+            if($this->checkWhatsappNumber($fields['pseudo'])):
+
+                $correct = $this->LoginSendPassword($fields['pseudo'], true);
+
+                if($correct):
+
+                    flash('infos-data-connexion', 'Message envoyé à votre numero whatsapp avec succès', 'uk-text-success');
+                    return tr_redirect()->toHome('/connexion/two');
+
+                else:
+
+                    flash('error-data-connexion', 'Ce pseudo correspond à un compte membre. Vous n\'avez pas le droit de vous connecter.', 'uk-text-danger');
+                    return tr_redirect()->back()->now();
+
+                endif;
+
+            endif;
+
+            flash('error-data-connexion', 'Le pseudo ou le numero whatsapp n\'existe pas dans notre système', 'uk-text-danger');
+            return tr_redirect()->toUrl(get_post_permalink(tr_options_field('options.page_connexion')))->withFields($fields);
+
+        endif;
+    }
+    
+    public function connexionTwo(){
+
+        if ( is_user_logged_in() ) {
+            return tr_redirect()->toHome();
         }
 
+        if(!isset($_SESSION['login']) || empty($_SESSION['login'])){
+            return tr_redirect()->toUrl(get_post_permalink(tr_options_field('options.page_connexion')));
+        }
 
+        return tr_view('connexion.two')->setTitle('Connexion en tant que escort');
+    }
+    
+    public function connectTwo(){
+
+        $validation = [
+            'password' => 'required'
+        ];
+
+        $fields = $this->request->getFields();
+
+        $validator = tr_validator($validation, $fields);
+
+        $validator->errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'password:required' => 'Le mot de passe n\'a pas été saisi'
+            )
+        ];
+
+        $validator->validate();
+
+        if($validator->getErrors()):
+
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-connexion', $error, 'uk-text-danger');
+            endforeach;
+
+            return tr_redirect()->toHome('/connexion/two');
+        else:
+
+            $creds = array(
+                'user_login' => isset($_SESSION['login']) ? $_SESSION['login'] : '',
+                'user_password' => $fields['password']
+            );
+
+            $user_connect = wp_signon($creds);
+            if(is_wp_error($user_connect)):
+
+                flash('error-data-connexion', 'ce mot de passe ne correspond pas à l’identifiant', 'uk-text-danger');
+                return tr_redirect()->toHome('/connexion/two');
+
+            else:
+
+                if(isset($_SESSION['login'])) unset($_SESSION['login']);
+                return tr_redirect()->toUrl(get_the_permalink(tr_options_field('options.page_dashboard')));
+
+            endif;
+
+
+        endif;
+    }
+
+    public function inscrireOne(){
+
+        $validation = [
+            'pseudo' => 'required',
+            'name' => 'required',
+            'sexe' => 'required',
+            'datenais' => 'required'
+        ];
+
+        $fields = $this->request->getFields();
+
+        $validator = tr_validator($validation, $fields);
+
+        $validator->errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'pseudo:required' => 'Le pseudo est obligatoire',
+                'name:required' => 'Le nom complet est obligatoire',
+                'sexe:required' => 'Le choix du sexe est obligatoire',
+                'datenais:required' => 'La date de naissance est obligatoire'
+            )
+        ];
+
+        $validator->validate();
+
+        if($validator->getErrors()):
+
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-inscription', $error, 'uk-text-danger');
+            endforeach;
+
+            return tr_redirect()->toHome('/inscription/one')->withFields($fields);
+
+        else:
+
+            if(username_exists($fields['pseudo'])):
+
+                flash('error-data-inscription', 'Le pseudo '.$fields['pseudo'].' est déjà utilisé par un autre utilisateur', 'uk-text-danger');
+                return tr_redirect()->toHome('/inscription/one')->withFields($fields);
+
+            else:
+
+                $_SESSION['inscription']['one'] = $fields;
+                return tr_redirect()->toHome('/inscription/two')->withFields($fields);
+
+            endif;
+
+        endif;
 
     }
 
-    public function fiche($codeins = null){
+    public function inscriptionOne(){
 
-        $codeins = preg_split('[/]', $codeins)[0];
-
-        if($codeins == null){
-            return tr_redirect()->back()->now();
+        if ( is_user_logged_in() ) {
+            return tr_redirect()->toHome()->now();
         }
 
-        ob_start();
+        return tr_view('inscription.one')->setTitle('Devenir escorte chez charlie');
+
+    }
+
+    public function inscrireTwo(){
+
+        $validation = [
+            'nationalite' => 'required',
+            'ville' => 'required',
+            'taille' => 'required',
+            'poids' => 'required',
+            'teint' => 'required',
+            'type_corps' => 'required'
+        ];
+
+        $fields = $this->request->getFields();
+
+        $validator = tr_validator($validation, $fields);
+
+        $validator->errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'nationalite:required' => 'Le choix de la nationalité est obligatoire',
+                'ville:required' => 'Le choix de la ville est obligatoire',
+                'taille:required' => 'La taille est obligatoire',
+                'teint:required' => 'Le choix du teint est obligatoire',
+                'type_corps:required' => 'Le choix du type de corps est obligatoire',
+                'poids:required' => 'Le poids est obligatoire'
+            )
+        ];
+
+        $validator->validate();
+
+        if($validator->getErrors()):
+
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-inscription', $error, 'uk-text-danger');
+            endforeach;
+
+            return tr_redirect()->toHome('/inscription/two')->withFields($fields);
+
+        else:
+
+            $_SESSION['inscription']['two'] = $fields;
+
+            return tr_redirect()->toHome('/inscription/tree')->withFields($fields);
+
+        endif;
+
+    }
+
+    public function inscriptionTwo(){
+
+        if ( is_user_logged_in() ) {
+            return tr_redirect()->toHome()->now();
+        }
+
+        if(!isset($_SESSION['inscription'])) return tr_redirect()->toHome()->now();
+
+        return tr_view('inscription.two')->setTitle('Devenir escorte chez charlie');
+    }
+
+    public function inscrireTree(){
+
+        $validation = [
+
+            'disponibilite' => 'required',
+            'service_offert' => 'required',
+            'service_propose' => 'required'
+        ];
+
+        $fields = $this->request->getFields();
+
+        $validator = tr_validator($validation, $fields);
+
+        $validator->errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'service_propose:required' => 'Choisissez au moin un service à proposer',
+                'service_offert:required' => 'Le choix du genre est obligatoire',
+                'disponibilite:required' => 'Le choix de la disponibilité est obligatoire'
+            )
+        ];
+
+        $validator->validate();
+
+        if($validator->getErrors()):
+
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-inscription', $error, 'uk-text-danger');
+            endforeach;
+
+            return tr_redirect()->toHome('/inscription/tree')->withFields($fields);
+
+        else:
+
+            $options = tr_options_field('options.insc_horaire') ? tr_options_field('options.insc_horaire') : [];
+
+            if(!$options):
+                flash('error-data-inscription', 'Impossible de faire des enregistrements sans definir un taux horaire', 'uk-text-danger');
+                return tr_redirect()->toHome('/inscription/tree')->withFields($fields);
+            endif;
+
+            $key = 1;
+            $service_price = [];
+
+            if(intval($fields[$key]['amount']) > 0 && $fields[$key]['actif'] && $fields[$key]['shot'] > 0):
+
+                foreach ($options as $option):
+                    if($option['name'] === $fields[$key]['name']):
+
+                        if(intval($fields[$key]['amount']) > 0 && intval($fields[$key]['shot']) > 0):
+                            $service_price[] = $fields[$key];
+                        endif;
+
+                        $key++;
+
+                    endif;
+                endforeach;
+
+                $fields['service_price'] = $service_price;
+
+            else:
+
+                flash('error-data-inscription', 'Le montant ou le shot du taux horaire de '.$fields[$key]['name'].' doit être renseigné', 'uk-text-danger');
+                return tr_redirect()->toHome('/inscription/tree')->withFields($fields);
+
+            endif;
+
+            if($fields['disponibilite'] === 'in' || $fields['disponibilite'] === 'both'):
+
+                if(empty($fields['quartier_recevoir'])):
+
+                    flash('error-data-inscription', 'Vous devez renseigner le lieu ou le quartier de reception pour vos clients', 'uk-text-danger');
+                    return tr_redirect()->toHome('/inscription/tree')->withFields($fields);
+
+                endif;
+
+            endif;
+
+            $_SESSION['inscription']['tree'] = $fields;
+
+            return tr_redirect()->toHome('/inscription/four')->withFields($fields);
+
+        endif;
+
+    }
+
+    public function inscriptionTree(){
+
+        if ( is_user_logged_in() ) {
+            return tr_redirect()->toHome()->now();
+        }
+
+        if(!isset($_SESSION['inscription'])) return tr_redirect()->toHome()->now();
+
+        return tr_view('inscription.tree')->setTitle('Devenir escorte chez charlie');
+    }
+
+    public function inscrireFour(){
+
+        $validation = [
+            'phone' => 'required'
+        ];
+
+        $fields = $this->request->getFields();
+
+        $validator = tr_validator($validation, $fields);
+
+        $validator->errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'phone:required' => 'Le numéro de téléphone est obligatoire'
+            )
+        ];
+
+        $validator->validate();
+
+        if($validator->getErrors()):
+
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-inscription', $error, 'uk-text-danger');
+            endforeach;
+
+            return tr_redirect()->toHome('/inscription/four')->withFields($fields);
+
+        else:
+
+            if(!isset($_SESSION['inscription']['four']['codeparrainnee'])):
+
+
+                $query_whatsapp = tr_query()->table('wp_whatsapp')->where('codeactivation', '=', $_SESSION['inscription']['four']['codeconfirmation'])->first();
+
+                if(!$query_whatsapp):
+                    flash('error-data-inscription', 'Nous ne trouvons aucune demande de synchronisation correspondant à ce numéro. Envoyez le code ci-dessous par whatsapp.', 'uk-text-danger');
+                    return tr_redirect()->toHome('/inscription/four')->withFields($fields);
+                endif;
+
+            else:
+                // A appliquer uniquement pour les personnes qui s'incrivent avec
+                $query_whatsapp = tr_query()->table('wp_whatsapp')->where('codeParrain', '=', $_SESSION['inscription']['four']['codeparrainnee'])->first();
+
+            endif;
+
+            $data_inscrit = $_SESSION['inscription'];
+
+            // Creation du compte de l'utilisateur et de son mot de passe
+
+            $password = random_password($data_inscrit['one']['name']);
+            $insert = array(
+                'user_login' => $data_inscrit['one']['pseudo'],
+                'display_name' => $data_inscrit['one']['name'],
+                'first_name' => $data_inscrit['one']['name'],
+                'user_pass' => $password,
+                'user_registered' => date('Y-m-d H:i:s')
+            );
+
+            $user = wp_insert_user_customs($insert);
+
+            // Envoie du mot de passe par whatsapp et du message de bienvenue
+
+            $api_whatsapp = new WhatsappController(new Request(), new Response());
+
+            $string = "*Bienvenue dans notre communauté d'escort*\n\n";
+            $string .= "Votre inscription s'est réalisée avec succès. Connectez-vous pour completer vos informations et activer votre compte.\n\n";
+            $string .= "*NB* : \n";
+            $string .= "Votre compte ne sera que valide que si vous soumettez au moins deux photos qui remplissent les conditions suivante :\n\n";
+            $string .= "- La photo doit être claire.\n";
+            $string .= "- La photo ne doit pas afficher votre nudité.(minimum en mailloy de bain)\n";
+            $string .= "- La photo ne doit pas être pornographique.\n";
+            $string .= "- La photo ne doit pas avoir de text, ni de détail.\n";
+            $string .= "\nToutes ces exigences sont faite pour vous faire paraitre plus sérieuse et professionnelle afin d'inciter de la sensualité auprès de nos membres.";
+            $api_whatsapp->sendMessageByPhone($query_whatsapp['numeroWhatsapp'], $string);
+
+            $string = "*Comment gerer votre disponibilité*\n\n";
+            $string .= "Notre plateforme vous permet de vous rendre disponible en fonction de votre temps libre ou du début de vos activités.\n";
+            $string .= "Être disponible sur notre plateforme implique que votre profil sera visible par nos membres qui sollicitent des escorts dans les heures qui suivent.\n\n";
+            $string .= "Envoyez ainsi le mot : \n";
+            $string .= "- *DISPO* : pour être disponible \n";
+            $string .= "- *INDISPO* : pour ne plus être disponible \n";
+
+            $string .= "\n*NB* : \n";
+            $string .= "Pendant votre disponibilité, vous avez l'obligation d'accepter les demandes de reservation que vous recevez. Au bout de 03 reservations sans reponse, votre profil sera indisponible automatiquement\n\n";
+            $string .= "Vous ne disposez que de 10 minutes pour repondre favorable à une demande de reservation.\n\n";
+
+            $string .= "Si vous avez des questions, envoyez le mot *Conseil* pour vous mettre en relation avec un téleconseiller.";
+
+            $api_whatsapp->sendMessageByPhone($query_whatsapp['numeroWhatsapp'], $string);
+
+            $string = "*Invitez vos connaissances et faites vous un peu plus de revenu*\n\n";
+            $string .= "Si vous disposez d’un réseau de personne susceptible de faire partir de notre communauté d’escort, Nous vous invitons à les parrainer afin que vous puissiez gagner 20% de gain sur chaque mise en relation qui sera effectuée.\n";
+            $string .= "De ce fait, si vous êtes interessés tapez *affiliation* pour avoir votre code secret.\n\n";
+            $string .= "Si vous avez des questions, envoyez le mot *Conseil* pour vous mettre en relation avec un téleconseiller.";
+
+            $api_whatsapp->sendMessageByPhone($query_whatsapp['numeroWhatsapp'], $string);
+
+            
+            $inscrit = new Inscrit;
+
+            $inscrit->post_type = 'inscrit';
+            $inscrit->post_title = $data_inscrit['one']['name'];
+            $inscrit->post_status = 'publish';
+            $inscrit->post_author = $user;
+            $inscrit->user_id = $user;
+
+            $inscrit->datenais = $data_inscrit['one']['datenais'];
+            $inscrit->sexe = $data_inscrit['one']['sexe'];
+            $inscrit->type_user = 'e';
+
+            $inscrit->nationalite = $data_inscrit['two']['nationalite'];
+            $inscrit->ville = $data_inscrit['two']['ville'];
+            $inscrit->taille = $data_inscrit['two']['taille'];
+            $inscrit->teint = $data_inscrit['two']['teint'];
+            $inscrit->type_corps = $data_inscrit['two']['type_corps'];
+            $inscrit->poids = $data_inscrit['two']['poids'];
+
+            $inscrit->service_propose = $data_inscrit['tree']['service_propose'];
+            $inscrit->service_offert = $data_inscrit['tree']['service_offert'];
+            $inscrit->disponibilite = $data_inscrit['tree']['disponibilite'];
+            $inscrit->service_price = serialize($data_inscrit['tree']['service_price']);
+            $inscrit->quartier_recevoir = $data_inscrit['tree']['quartier_recevoir'];
+
+            $inscrit->phone = $fields['phone'];
+            $inscrit->phonewhatsapp = $query_whatsapp['numero'];
+
+            $inscrit->save();
+
+            // rensegnement des informations de la table whatsapp
+
+            $whatsapp = (new Whatsapp)->findById($query_whatsapp['id']);
+            $whatsapp->codeactivation = $password;
+            $whatsapp->codeParrain = generateParrainCode(6);
+            $whatsapp->numeroContact = $fields['phone'];
+            $whatsapp->typeUser = 'e';
+            $whatsapp->iduser = $user;
+            $whatsapp->idpostuser =  $inscrit->ID;
+
+            if(isset($_SESSION['inscription']['four']['codeparrain'])):
+                $parent = (new Whatsapp)->where('codeParrain', '=', $_SESSION['inscription']['four']['codeparrain'])->first();
+                $whatsapp->idparent =  $parent->id;
+            endif;
+
+            $whatsapp->save();
+
+            unset($_SESSION['inscription']);
+
+            flash('success-data-inscription', 'Votre inscription a été enregistré avec succès. Veuillez vous connecter pour ajouter des photos et activer votre compte.', 'uk-text-success');
+            return tr_redirect()->toHome('/inscription/success')->now();
+
+        endif;
+
+    }
+
+    public function inscriptionFour(){
+
+        if ( is_user_logged_in() ) {
+            return tr_redirect()->toHome()->now();
+        }
+
+        if(!isset($_SESSION['inscription'])) return tr_redirect()->toHome()->now();
+
+        $activa_prefix = tr_options_field('options.activa_prefix');
+
+        if(!isset($_SESSION['inscription']['four'])):
+            $_SESSION['inscription']['four']['codeconfirmation'] = strtoupper($activa_prefix).''.generateParrainCode(6);
+        endif;
+
+        if(isset($_GET['generate']) && isset($_SESSION['inscription']['four'])):
+            $_SESSION['inscription']['four']['codeconfirmation'] = strtoupper($activa_prefix).''.generateParrainCode(6);
+            return tr_redirect()->toHome('/inscription/four');
+        endif;
+
+        return tr_view('inscription.four')->setTitle('Devenir escorte chez charlie');
+    }
+
+    public function inscriptionSuccess(){
+        return tr_view('inscription.succes')->setTitle('Devenir escorte chez charlie');
+    }
+
+    public function checkWhatsappNumber($number){
+        $exist = (new Whatsapp())->where('numero', '=', $number);
+        return $exist->first();
+    }
+    
+    public function LoginSendPassword($pseudo, $number = false){
+
+        $ligneWhatsapp = null;
+
+        $_SESSION['login'] = $pseudo;
+
+        if($number):
+            $ligneWhatsapp = $this->checkWhatsappNumber($pseudo);
+
+            $user = get_user_by('ID', $ligneWhatsapp->iduser);
+            $_SESSION['login'] = $user->user_login;
+
+        else:
+
+            $user = get_user_by('login', $pseudo);
+
+        endif;
 
         $args = array(
             'post_type' => 'inscrit'
         );
+
         $args['meta_query'] = array(
             array(
-                'key' => 'codeins',
-                'value' => $codeins,
+                'key' => 'user_id',
+                'value' => $user->ID,
                 'compare' => '='
             )
         );
 
         $post = query_posts($args);
 
-        tr_view('pdf.fiche', ['candidat' => $post[0]])::load();
 
-        $content = ob_get_clean();
+        if(tr_posts_field('type_user', $post[0]->ID) === 'e'):
 
-        http_response_code(200);
+            // Modification du mot de passe
+            $password = random_password($user->display_name);
+            wp_set_password( $password, $user->ID);
 
-        try{
-            $pdf = new HTML2PDF('P', 'A4', 'fr');
-            $pdf->writeHTML($content);
-            $pdf->Output($codeins.'.pdf');
-        }catch (\HTML2PDF_exception $e){
-            die($e);
-        }
+            // Recherche du numero de telephone de l'user
+            $phonewhatsapp = $pseudo;
 
-        exit;
+            if(!$number):
+
+                $phonewhatsapp = get_post_meta($post[0]->ID, 'phonewhatsapp', true);
+
+            endif;
+
+            // Envoie du mot de passe par whatsapp
+
+            $api_whatsapp = new WhatsappController(new Request(), new Response());
+
+            $string = "*Mot de passe de connexion*\n\n";
+            $string .= "Connectez-vous avec ce mot de passe *".$password."*";
+
+            $current_whatsapp = (new Whatsapp())->where('numero', '=', $phonewhatsapp)->first();
+            $api_whatsapp->sendMessageByPhone($current_whatsapp->numeroWhatsapp, $string);
+
+            // Enregistrement du nouveau mot de passe envoyé a l'utilisateur
+
+            if(!$number):
+                $ligneWhatsapp = (new Whatsapp())->where('iduser', '=', $user->ID)->first();
+            endif;
+
+            $update_data = array(
+                'codeactivation' => $password
+            );
+
+            $update = (new Whatsapp())->findById($ligneWhatsapp->id);
+            $update->update($update_data);
+
+            return true;
+
+        else:
+
+            return false;
+
+        endif;
+        
+    }
+
+    public function updateOne(){
+
+        $validation = [
+            'pseudo' => 'required',
+            'name' => 'required',
+            'sexe' => 'required',
+            'datenais' => 'required',
+            'nationalite' => 'required',
+            'ville' => 'required',
+            'taille' => 'required',
+            'poids' => 'required',
+            'teint' => 'required',
+            'type_corps' => 'required'
+        ];
+
+        $fields = $this->request->getFields();
+
+        $validator = tr_validator($validation, $fields);
+
+        $validator->errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'pseudo:required' => 'Le pseudo est obligatoire',
+                'name:required' => 'Le nom complet est obligatoire',
+                'sexe:required' => 'Le choix du sexe est obligatoire',
+                'datenais:required' => 'La date de naissance est obligatoire',
+                'nationalite:required' => 'Le choix de la nationalité est obligatoire',
+                'ville:required' => 'Le choix de la ville est obligatoire',
+                'taille:required' => 'La taille est obligatoire',
+                'teint:required' => 'Le choix du teint est obligatoire',
+                'type_corps:required' => 'Le choix du type de corps est obligatoire',
+                'poids:required' => 'Le poids est obligatoire'
+            )
+        ];
+
+        $validator->validate();
+
+        if($validator->getErrors()):
+
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-update', $error, 'uk-text-danger');
+            endforeach;
+
+            return tr_redirect()->back()->withFields($fields)->now();
+
+        else:
+
+            $current_user = _wp_get_current_user();
+
+            $insert = array(
+                'ID' => $current_user->ID,
+                'display_name' => $fields['name'],
+                'first_name' => $fields['name'],
+            );
+
+            wp_update_user($insert);
+
+            $postInfo = array(
+                'ID' => $fields['post_id'],
+                'post_content' => $fields['post_content']
+            );
+            wp_update_post($postInfo);
+
+            $inscrit = $this->model->findById($fields['post_id']);
+            $inscrit->update($fields);
+
+            flash('success-data-update', 'Modification effectuée avec succès', 'uk-text-success');
+            return tr_redirect()->back()->now();
+
+        endif;
+    }
+    
+    public function updateTwo(){
+
+        $validation = [
+
+            'disponibilite' => 'required',
+            'service_offert' => 'required',
+            'service_propose' => 'required'
+        ];
+
+        $fields = $this->request->getFields();
+
+        if($fields['disponibilite'] === 'in' || $fields['disponibilite'] === 'both'):
+            $validation['quartier_recevoir'] = 'required';
+        endif;
+
+        $validator = tr_validator($validation, $fields);
+
+        $errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'service_propose:required' => 'Choisissez au moin un service à proposer',
+                'service_offert:required' => 'Le choix du genre est obligatoire',
+                'disponibilite:required' => 'Le choix de la disponibilité est obligatoire'
+            )
+        ];
+
+        if($fields['disponibilite'] === 'in' || $fields['disponibilite'] === 'both'):
+            $errorMessages['messages']['quartier_recevoir:required'] = 'Vous devez renseigner le lieu ou le quartier de reception pour vos clients';
+        endif;
+
+        $validator->errorMessages = $errorMessages;
+
+        $validator->validate();
+
+        if($validator->getErrors()):
+
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-update', $error, 'uk-text-danger');
+            endforeach;
+
+            return tr_redirect()->back()->withFields($fields)->now();
+
+        else:
+
+            $options = tr_options_field('options.insc_horaire') ? tr_options_field('options.insc_horaire') : [];
+
+            if(!$options):
+                flash('error-data-update', 'Impossible de faire des enregistrements sans definir un taux horaire', 'uk-text-danger');
+                return tr_redirect()->back()->withFields($fields)->now();
+            endif;
+
+            $key = 1;
+            $service_price = [];
+
+            if(intval($fields[$key]['amount']) > 0 && $fields[$key]['actif'] && $fields[$key]['shot'] > 0):
+
+                foreach ($options as $option):
+                    if($option['name'] === $fields[$key]['name']):
+
+                        if(intval($fields[$key]['amount']) > 0 && intval($fields[$key]['shot']) > 0):
+                            $service_price[] = $fields[$key];
+                        endif;
+
+                        $key++;
+
+                    endif;
+                endforeach;
+
+                $fields['service_price'] = $service_price;
+
+            else:
+
+                flash('error-data-update', 'Le montant ou le shot du taux horaire de '.$fields[$key]['name'].' doit être renseigné', 'uk-text-danger');
+                return tr_redirect()->back()->withFields($fields)->now();
+
+            endif;
+
+            $inscrit = $this->model->findById($fields['post_id']);
+            $inscrit->update($fields);
+
+            flash('success-data-update', 'Modification effectuée avec succès', 'uk-text-success');
+            return tr_redirect()->back()->now();
+
+        endif;
+    }
+
+    public function updateTree(){
+
+        $validation = [
+
+            'photos' => 'required'
+        ];
+
+        $fields = $this->request->getFields();
+
+        $validator = tr_validator($validation, $fields);
+
+        $validator->errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'photos:required' => 'Une photo est obligatoire'
+            )
+        ];
+
+        $validator->validate();
+
+        if($validator->getErrors()):
+
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-update', $error, 'uk-text-danger');
+            endforeach;
+
+            return tr_redirect()->back()->withFields($fields)->now();
+
+        else:
+
+
+
+            $photo_valide = tr_posts_field('photos_valide', $fields['post_id']) ? tr_posts_field('photos_valide', $fields['post_id']) : [];
+
+            if(!$photo_valide):
+
+                $fields['active'] = false;
+
+            else:
+
+                $a_valider = false;
+            
+                foreach($fields['photos'] as $key => $valide):
+
+                    if($valide['photo'] && !in_array($valide['photo'], (array)$photo_valide)):
+                        $a_valider = true;
+                    endif;
+
+                    if(!$valide['photo']):
+                        unset($fields['photos'][$key]);
+                    endif;
+                    
+                endforeach;
+
+                $fields['photos_a_valider'] = $a_valider;
+
+            endif;
+
+            $inscrit = (new Inscrit())->findById($fields['post_id']);
+            $inscrit->update($fields);
+
+            flash('success-data-update', 'Modification effectuée avec succès', 'uk-text-success');
+            return tr_redirect()->back()->now();
+
+        endif;
+
 
     }
 
     public function update($id = null)
     {
-
-        $this->validation = [
-            'nom' => 'required',
-            'prenom' => 'required',
-            'datenais' => 'required',
-            'email' => 'required|email',
-            'position' => 'required'
-        ];
-
-
-
         $post = $this->model->findById( $id );
         $fields = $this->request->getFields();
 
-        if($fields['post_status_old'] == 'auto-draft'):
-            if($this->invalid()){
-                $post->delete();
-                wp_die('Des champs obligatoires n\'ont pas été renseigné. Ces champs sont représentés par (<span style="color: red;">*</span>). <br><br> <a href="'.tr_redirect()->back()->withFields($fields)->url.'">Retour</a>');
+        $photos = tr_posts_field('photos', $post->ID) ? tr_posts_field('photos', $post->ID) : [];
+
+        if(isset($fields['valid_photo']) && $fields['valid_photo']):
+
+            if($photos):
+                
+                foreach ($photos as $key => $photo):
+                    $photos_valide = tr_posts_field('photos_valide', $post->ID) ? tr_posts_field('photos_valide', $post->ID) : [];
+                    if(!search($fields['photos'], 'photo', $photo['photo'])
+                        && !in_array($photo['photo'], $photos_valide)):
+
+                        wp_delete_attachment($photo['photo']); // Supprimer les photos non autorisés lors de la validation
+                        unset($photos[$key]);
+
+                        // Envoyer un message a l'utilisateur de la suppression des dernieres photos qui ont ete soumis à validation
+
+                    endif;
+                endforeach;
+
+            endif;
+
+            $photos = $photos ? $photos : [];
+
+            $photo_send = $fields['photos'] ? $fields['photos'] : [];
+
+            $photo_merge = array_unique(array_merge($photo_send, $photos), SORT_REGULAR);
+
+            $photoValid = tr_posts_field('photos_valide', $post->ID) ? tr_posts_field('photos_valide', $post->ID) : [];
+
+            // Enregistrer les nouvelles photos validé dans le tableau des validations.
+            if($photo_merge):
+                foreach($photo_merge as $valide):
+                    if($valide['photo'] && !in_array($valide['photo'], $photoValid)):
+                        $photoValid[] = $valide['photo'];
+                    endif;
+                endforeach;
+
+            else:
+                $photo_merge = [];
+            endif;
+
+            $fields['photos_valide'] = $photoValid;
+            $fields['photos'] = $photo_merge;
+            $fields['photos_a_valider'] = '0';
+            
+        else:
+
+            if(isset($fields['delete_photo']) && $fields['delete_photo']):
+
+                $photoValid = tr_posts_field('photos_valide', $post->ID) ? tr_posts_field('photos_valide', $post->ID) : [];
+
+                if($photos):
+
+                    foreach ($photos as $key => $photo):
+
+                        if(!search($fields['photos'], 'photo', $photo['photo'])):
+
+                            unset($photos[$key]);
+
+                            $key = array_keys($photoValid, $photo['photo']);
+                            if($key >= 0):
+                                unset($photoValid[$key]);
+                            endif;
+
+                        endif;
+
+                    endforeach;
+
+                endif;
+
+                $photos = $photos ? $photos : [];
+
+                $photo_send = $fields['photos'] ? $fields['photos'] : [];
+
+                $photo_merge = array_unique(array_merge($photo_send, $photos), SORT_REGULAR);
+
+                // Enregistrer les nouvelles photos validé dans le tableau des validations.
+                if(!$photo_merge):
+                    $photo_merge = [];
+                endif;
+
+                $fields['photos_valide'] = $photoValid;
+                $fields['photos'] = $photo_merge;
+                $fields['photos_a_valider'] = '0';
+
+            else:
+
+                $fields['photos'] = $photos;
+
+            endif;
+
+        endif;
+
+        if(isset($fields['photos_valide']) && !$fields['photos'] && !$fields['photos_valide']):
+            $fields['active'] = '0';
+        endif;
+
+        $post->update( $fields );
+    }
+
+    public function inscrireMembre(){
+
+        $validation = [
+            'pseudo' => 'required',
+            'name' => 'required',
+            'nationalite' => 'required',
+            'datenais' => 'required'
+        ];
+
+        $fields = $this->request->getFields();
+
+        $validator = tr_validator($validation, $fields);
+
+        $validator->errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'nationalite:required' => 'Le choix de la nationalité est obligatoire',
+                'pseudo:required' => 'Le pseudo est obligatoire',
+                'name:required' => 'Le nom complet est obligatoire',
+                'datenais:required' => 'La date de naissance est obligatoire'
+            )
+        ];
+
+        $validator->validate();
+
+        if($validator->getErrors()):
+
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-inscription-membre', $error, 'uk-text-danger');
+            endforeach;
+
+            return tr_redirect()->toHome('/inscription-membre/one')->withFields($fields);
+
+        else:
+
+            if(username_exists($fields['pseudo'])):
+
+                flash('error-data-inscription-membre', 'Le pseudo '.$fields['pseudo'].' est déjà utilisé par un autre utilisateur', 'uk-text-danger');
+                return tr_redirect()->toHome('/inscription-membre/one')->withFields($fields);
+
+            else:
+
+                $_SESSION['inscriptionMembre']['one'] = $fields;
+                return tr_redirect()->toHome('/inscription-membre/two')->withFields($fields);
+
+            endif;
+
+        endif;
+
+    }
+
+    public function inscriptionMembreOne(){
+
+        return tr_view('membre.one')->setTitle('Devenir membre chez charlie');
+    }
+
+    public function inscriptionMembre(){
+
+        if(!isset($_SESSION['inscriptionMembre'])) return tr_redirect()->toHome()->now();
+
+        $activa_prefix = tr_options_field('options.activa_prefix');
+
+        if(!isset($_SESSION['inscriptionMembre']['two'])):
+            $_SESSION['inscriptionMembre']['two']['codeconfirmation'] = strtoupper($activa_prefix).''.generateParrainCode(6);
+        endif;
+
+        if(isset($_GET['generate']) && isset($_SESSION['inscriptionMembre']['two'])):
+            $_SESSION['inscriptionMembre']['two']['codeconfirmation'] = strtoupper($activa_prefix).''.generateParrainCode(6);
+            return tr_redirect()->toHome('/inscription-membre/two');
+        endif;
+
+        return tr_view('membre.two')->setTitle('Devenir membre chez charlie');
+    }
+
+    public function inscrireMembreTwo(){
+
+        $validation = [
+            'phone' => 'required'
+        ];
+
+        $fields = $this->request->getFields();
+
+        $validator = tr_validator($validation, $fields);
+
+        $validator->errorMessages = [
+            'regex' => false,
+            'messages' => array(
+                'phone:required' => 'Le numéro de téléphone est obligatoire'
+            )
+        ];
+
+        $validator->validate();
+
+        if($validator->getErrors()):
+
+            foreach ($validator->getErrors() as $error):
+                flash('error-data-inscription-membre', $error, 'uk-text-danger');
+            endforeach;
+
+            return tr_redirect()->toHome('/inscription-membre/two')->withFields($fields);
+
+        else:
+
+            if(!isset($_SESSION['inscriptionMembre']['two']['codeparrainnee'])):
+
+                $query_whatsapp = tr_query()->table('wp_whatsapp')->where('codeactivation', '=', $_SESSION['inscriptionMembre']['two']['codeconfirmation'])->first();
+
+                if(!$query_whatsapp):
+                    flash('error-data-inscription-membre', 'Nous ne trouvons aucune demande de synchronisation correspondant à ce numéro. Envoyez le code ci-dessous par whatsapp.', 'uk-text-danger');
+                    return tr_redirect()->toHome('/inscription-membre/two')->withFields($fields);
+                endif;
+
+            else:
+
+                $query_whatsapp = tr_query()->table('wp_whatsapp')->where('codeParrain', '=', $_SESSION['inscriptionMembre']['two']['codeparrainnee'])->first();
+
+            endif;
+
+            $data_inscrit = $_SESSION['inscriptionMembre'];
+
+            // Creation du compte de l'utilisateur et de son mot de passe
+
+            $password = random_password($data_inscrit['one']['name']);
+            $insert = array(
+                'user_login' => $data_inscrit['one']['pseudo'],
+                'display_name' => $data_inscrit['one']['name'],
+                'first_name' => $data_inscrit['one']['name'],
+                'user_pass' => $password,
+                'user_registered' => date('Y-m-d H:i:s')
+            );
+
+            $user = wp_insert_user_customs($insert);
+
+            // Envoie du mot de passe par whatsapp et du message de bienvenue
+            $api_whatsapp = new WhatsappController(new Request(), new Response());
+
+            $string = "*Bienvenue chez charlie et ses escorts*\n\n";
+            $string .= "Votre inscription s'est réalisée avec succès. Rendez-vous au menu des reservations d'escort pour effectuer votre choix.\n\n";
+            $api_whatsapp->sendMessageByPhone($query_whatsapp['numeroWhatsapp'], $string);
+
+            $string = "*Invitez vos connaissances et faites vous un peu plus de revenu*\n\n";
+            $string .= "Si vous disposez d’un réseau de personne susceptible de faire partir de notre communauté d’escort, Nous vous invitons à les parrainer afin que vous puissiez gagner 20% de gain sur chaque mise en relation qui sera effectuée.\n";
+            $string .= "De ce fait, si vous êtes interessés tapez *affiliation* pour avoir votre code secret.\n\n";
+            $string .= "Si vous avez des questions, envoyez le mot *Conseil* pour vous mettre en relation avec un téleconseiller.";
+
+            $api_whatsapp->sendMessageByPhone($query_whatsapp['numeroWhatsapp'], $string);
+
+            // Creation du custom post inscrit
+            $inscrit = new Inscrit;
+
+            $inscrit->post_title = $data_inscrit['one']['name'];
+            $inscrit->post_type = 'inscrit';
+            $inscrit->post_status = 'publish';
+            $inscrit->post_author = $user;
+
+            $inscrit->datenais = $data_inscrit['one']['datenais'];
+            $inscrit->type_user = 'm';
+
+            $inscrit->nationalite = $data_inscrit['one']['nationalite'];
+
+            $inscrit->phone = $fields['phone'];
+            $inscrit->phonewhatsapp = $query_whatsapp['numeroWhatsapp'];
+            $inscrit->user_id = $user;
+
+            $inscrit->save();
+
+            // rensegnement des informations de la table whatsapp
+
+            $whatsapp = (new Whatsapp())->findById($query_whatsapp['id']);
+            $whatsapp->codeactivation = $password;
+            $whatsapp->codeParrain = generateParrainCode(6);
+            $whatsapp->numeroContact = $fields['phone'];
+            $whatsapp->typeUser = 'm';
+            $whatsapp->iduser = $user;
+            $whatsapp->idpostuser =  $inscrit->ID;
+            $whatsapp->save();
+
+            unset($_SESSION['inscriptionMembre']);
+
+            flash('success-data-inscription-membre', 'Votre inscription a été enregistre avec succès. Vous pouvez effectuer les reservations avec succès sur notre plateforme.', 'uk-text-success');
+            return tr_redirect()->toHome('/inscription-membre/success')->now();
+
+        endif;
+    }
+
+    public function inscrireMembreSuccess(){
+        return tr_view('membre.succes')->setTitle('Devenir membre chez charlie');
+    }
+
+    public function redirectInscription($numero){
+
+        $whatsapp = (new Whatsapp())->where('numero', '=', $numero)->first();
+
+        $api_message = new WhatsappController(new Request(), new Response());
+
+        if($whatsapp):
+            if($whatsapp->iduser){
+
+                $type = $whatsapp->typeUser === 'm' ? 'Membre' : 'Escort';
+
+                $string = "*Ce numero est déja inscrit*\n\n";
+                $string .= "Ce numero est deja inscrit en tant que ".$type." \n";
+
+                if($whatsapp->typeUser === 'e'):
+                    $string .= "Connectez-vous pour gerer vos informations et activez votre compte.\n";
+                    $string .= "".get_the_permalink(tr_options_field('options.page_connexion'))."";
+                else:
+                    $string .= "Rendez-vous dans notre menu de reservation d'escort pour solliciter les escortes de votre choix.";
+                endif;
+
+                $api_message->sendMessageByPhone($whatsapp->numeroWhatsapp, $string);
+
             }else{
-                if($this->Age($fields['datenais'])){
 
-                    if (empty($post->post_title)):
-                        $post->post_title = $fields['nom'];
-                        if ($fields['prenom']) {
-                            $post->post_title .= ' ' . $fields['prenom'];
-                        }
-                    endif;
-
-                    if(empty(tr_posts_field('codeins', $id))):
-                        $option_ville = tr_options_field('options.insc_ville') ? tr_options_field('options.insc_ville') : [];
-                        $codecell = '';
-                        foreach ($option_ville as $ville):
-                            if(strtoupper($ville['ville']) == strtoupper($fields['position'])):
-                                $codecell = $ville['code'].''.$this->random(4);
-                            endif;
-                        endforeach;
-
-
-                        update_post_meta( $post_id = $id, $key = 'codeins', $value = $codecell );
-                    endif;
-
-                    $time = \DateTime::createFromFormat('d/m/Y', $fields['datenais']);
-
-                    $newformat = $time->format('Y-m-d');
-
-                    update_post_meta($id, 'datenais_format', $newformat);
-
-                    parent::update($id);
+                if($whatsapp->typeUser == 'm'){
+                    // redirection ver le lien d'inscription des membres
+                    $_SESSION['inscriptionMembre']['two']['codeparrainnee'] = $whatsapp->codeParrain;
+                    return tr_redirect()->toUrl(get_the_permalink(tr_options_field('options.page_inscription_membre')));
                 }else{
-                    $post->delete();
-                    wp_die('l\'age du candidate doit etre compris entre 18 ans and et 26 ans. <br><br> <a href="'.tr_redirect()->back()->withFields($fields)->url.'">Retour</a>');
+                    // Redirection ver le lien d'inscription des escortes
+                    $_SESSION['inscription']['four']['codeparrainnee'] = $whatsapp->codeParrain;;
+                    return tr_redirect()->toUrl(get_the_permalink(tr_options_field('options.page_inscription')));
                 }
+
             }
-        else:
 
-            if($post->post_status == 'publish'):
-                if($fields){
-                    if($this->invalid()){
-                        $post->post_title = $fields['post_title_old'];
-                        $post->save();
-                        wp_die('Des champs obligatoires n\'ont pas été renseigné. Ces champs sont représentés par (<span style="color: red;">*</span>). <br><br> <a href="'.tr_redirect()->back()->withFields($fields)->url.'">Retour</a>');
-                    }else{
-                        if($this->Age($fields['datenais'])){
+        endif;
+    }
 
-                            if (empty($post->post_title)):
-                                $post->post_title = $fields['nom'];
-                                if ($fields['prenom']) {
-                                    $post->post_title .= ' ' . $fields['prenom'];
-                                }
-                            endif;
+    public function redirectErrorInscription($type, $codeactivation){
 
-                            if(empty(tr_posts_field('codeins', $id))):
-                                $option_ville = tr_options_field('options.insc_ville') ? tr_options_field('options.insc_ville') : [];
-                                $codecell = '';
-                                foreach ($option_ville as $ville):
-                                    if(strtoupper($ville['ville']) == strtoupper($fields['position'])):
-                                        $codecell = $ville['code'].''.$this->random(4);
-                                    endif;
-                                endforeach;
+        if($type === 'escort'):
+            unset($_SESSION['inscription']['four']['codeparrainnee']);
+            unset($_SESSION['inscription']['four']['codeparrain']);
 
+            $_SESSION['inscription']['four']['codeconfirmation'] = explode('/', $codeactivation)[0] ;
+            $_SESSION['inscription']['four']['existCode'] = true;
 
-                                update_post_meta( $post_id = $id, $key = 'codeins', $value = $codecell );
-                            endif;
+            return tr_redirect()->toUrl(get_the_permalink(tr_options_field('options.page_inscription')));
+        endif;
 
-                            $time = \DateTime::createFromFormat('d/m/Y', $fields['datenais']);
+        if($type === 'membre'):
+            unset($_SESSION['inscriptionMembre']['two']['codeparrainnee']);
+            unset($_SESSION['inscription']['four']['codeparrain']);
 
-                            $newformat = $time->format('Y-m-d');
+            $_SESSION['inscriptionMembre']['two']['codeconfirmation'] = explode('/', $codeactivation)[0];
+            $_SESSION['inscriptionMembre']['two']['existCode'] = true;
 
-                            update_post_meta($id, 'datenais_format', $newformat);
+            return tr_redirect()->toUrl(get_the_permalink(tr_options_field('options.page_inscription_membre')));
+        endif;
 
-                            parent::update($id);
-                        }else {
-                            $post->post_title = $fields['post_title_old'];
-                            $post->save();
-                            wp_die('l\'âge du candidate doit être compris entre 18 ans and et 26 ans. <br><br> <a href="'.tr_redirect()->back()->withFields($fields)->url.'">Retour</a>');
-                        }
-                    }
-                }
-
-            endif;
+        if($type !== 'membre' || $type !== 'escort'):
+            return tr_redirect()->toHome('/')->now();
         endif;
 
     }
 
-    public function importer(){
+    public function affiliation($codeparrain){
 
-        $query = tr_query()->table('wp_miss_inscrit');
+        $parent = (new Whatsapp())->where('codeParrain', '=', $codeparrain)->first();
 
-        $inscrits = $query->findAll()->get();
+        if($parent):
 
-        foreach ($inscrits as $inscrit):
+            $_SESSION['inscription']['four']['codeparrain'] = $parent->codeParrain;
+            return tr_redirect()->toUrl(get_the_permalink(tr_options_field('options.page_inscription_membre')));
 
-            $query_ins = tr_query()->table('wp_miss_inscrit');
-
-            $args = array(
-                'post_type' => 'inscrit'
-            );
-            $args['meta_query'] = array(
-                array(
-                    'key' => 'codeins',
-                    'value' => $inscrit->codeins,
-                    'compare' => '='
-                )
-            );
-
-            $post = query_posts($args);
-
-            if(!$post):
-
-                $post_title = $inscrit->nom;
-                if ($inscrit->prenom) {
-                    $post_title .= ' ' . $inscrit->prenom;
-                }
-
-                $id = wp_insert_post(array(
-                    'post_type' => 'inscrit',
-                    'post_title' => $post_title,
-                    'post_status' => 'publish'
-                ));
-
-                update_post_meta($id, 'codeins', $inscrit->codeins);
-                update_post_meta($id, 'nom', $inscrit->nom);
-                update_post_meta($id, 'prenom', $inscrit->prenom);
-                update_post_meta($id, 'datenais_format', $inscrit->dateNais);
-
-                $time = \DateTime::createFromFormat('Y-m-d', $inscrit->dateNais);
-
-                $newformat = $time->format('d/m/Y');
-
-                update_post_meta($id, 'datenais', $newformat);
-
-                update_post_meta($id, 'lieu', $inscrit->lieuNais);
-                update_post_meta($id, 'email', $inscrit->email);
-                update_post_meta($id, 'nationalite', $inscrit->nationalite);
-                update_post_meta($id, 'adresse', $inscrit->adresse);
-
-                $unwanted_array = array(    'Š'=>'S', 'š'=>'s', 'Ž'=>'Z', 'ž'=>'z', 'À'=>'A', 'Á'=>'A', 'Â'=>'A', 'Ã'=>'A', 'Ä'=>'A', 'Å'=>'A', 'Æ'=>'A', 'Ç'=>'C', 'È'=>'E', 'É'=>'E',
-                    'Ê'=>'E', 'Ë'=>'E', 'Ì'=>'I', 'Í'=>'I', 'Î'=>'I', 'Ï'=>'I', 'Ñ'=>'N', 'Ò'=>'O', 'Ó'=>'O', 'Ô'=>'O', 'Õ'=>'O', 'Ö'=>'O', 'Ø'=>'O', 'Ù'=>'U',
-                    'Ú'=>'U', 'Û'=>'U', 'Ü'=>'U', 'Ý'=>'Y', 'Þ'=>'B', 'ß'=>'Ss', 'à'=>'a', 'á'=>'a', 'â'=>'a', 'ã'=>'a', 'ä'=>'a', 'å'=>'a', 'æ'=>'a', 'ç'=>'c',
-                    'è'=>'e', 'é'=>'e', 'ê'=>'e', 'ë'=>'e', 'ì'=>'i', 'í'=>'i', 'î'=>'i', 'ï'=>'i', 'ð'=>'o', 'ñ'=>'n', 'ò'=>'o', 'ó'=>'o', 'ô'=>'o', 'õ'=>'o',
-                    'ö'=>'o', 'ø'=>'o', 'ù'=>'u', 'ú'=>'u', 'û'=>'u', 'ý'=>'y', 'þ'=>'b', 'ÿ'=>'y' );
-
-                $position = strtr( $inscrit->ville, $unwanted_array );
-
-                update_post_meta($id, 'position', strtoupper($position));
-                update_post_meta($id, 'phone', $inscrit->phone);
-
-                update_post_meta($id, 'diplome', $inscrit->diplome);
-                update_post_meta($id, 'profession', $inscrit->profession);
-                update_post_meta($id, 'compte', $inscrit->dream);
-                update_post_meta($id, 'signe', $inscrit->ambition);
-                update_post_meta($id, 'taille', $inscrit->taille);
-                update_post_meta($id, 'casier', $inscrit->qualite);
-                update_post_meta($id, 'enfant', $inscrit->enfant);
-                update_post_meta($id, 'participe', $inscrit->concours);
-                update_post_meta($id, 'idfacebook', $inscrit->idfacebook);
-                update_post_meta($id, 'year_participe', tr_options_field('options.ins_year'));
-
-            endif;
-
-            $query_ins->findById($inscrit->id)->delete();
-
-        endforeach;
-
-        return tr_redirect()->back()->now();
-    }
-
-
-    public function exporter(){
-
-        ob_start();
-
-        $queryParamsCounter = 0;
-
-        if(isset( $_GET['slug'] ) && $_GET['slug'] != 'all'){
-
-            $year_user = Date('Y') - intval($_GET['slug']);
-            $queryParamsCounter++;
-
-        }
-
-        if(isset( $_GET['slug-year'] ) && $_GET['slug-year'] != 'all'){
-
-            $year = $_GET['slug-year'];
-            $queryParamsCounter++;
-
-        }
-
-        if(isset( $_GET['s'] ) && !empty($_GET['s'])){
-
-            $search = $_GET['s'];
-            $queryParamsCounter++;
-
-        }
-
-
-        $meta_query = array();
-
-        if ($queryParamsCounter > 1) {
-            $meta_query['relation'] = 'AND';
-        }
-
-
-        if(isset($year_user)){
-            $meta_query[] = array(
-                'key' => 'datenais_format',
-                'value' => array((string)$year_user.'-01-01', (string)$year_user.'-12-31'),
-                'compare' => 'BETWEEN',
-                'type' => 'DATE'
-            );
-        }
-
-        if(isset($year)){
-            $meta_query[] = array(
-                'key' => 'year_participe',
-                'value' => $year
-            );
-        }
-
-        if(isset($search)){
-
-            $search_query = array();
-            $search_query['relation'] = 'OR';
-            $search_query[] = array(
-                'key' => 'codeins',
-                'value' => $search,
-                'compare' => 'LIKE'
-            );
-
-            $search_query[] = array(
-                'key' => 'position',
-                'value' => $search,
-                'compare' => 'LIKE'
-            );
-
-            $search_query[] = array(
-                'key' => 'nom',
-                'value' => $search,
-                'compare' => 'LIKE'
-            );
-
-            $search_query[] = array(
-                'key' => 'prenom',
-                'value' => $search,
-                'compare' => 'LIKE'
-            );
-
-            $meta_query[] = $search_query;
-        }
-
-        $args = ['post_type' => 'inscrit', 'posts_per_page' => '-1'];
-
-        if($meta_query){
-            $args['meta_query'] = $meta_query;
-        }
-
-        $candidat = query_posts($args);
-
-        tr_view('pdf.inscrit', ['candidats' => $candidat, 'slug' => $_GET['slug'], 'slug_year' => $_GET['slug-year'], 's' => $_GET['s']])::load();
-
-        $content = ob_get_clean();
-
-        http_response_code(200);
-
-        try{
-            $pdf = new HTML2PDF('L', 'A4', 'fr');
-            $pdf->writeHTML($content);
-            $pdf->Output('FicheInscrit.pdf');
-        }catch (\HTML2PDF_exception $e){
-            die($e);
-        }
-
-        exit;
-
-    }
-
-    public function Age($date){
-        list($jour, $mois, $annee) = preg_split('[/]', $date);
-        $today['mois'] = date('n');
-        $today['jour'] = date('j');
-        $today['annee'] = date('Y');
-        $annees = $today['annee'] - $annee;
-//        if ($today['mois'] <= $mois) {
-//            if ($mois == $today['mois']) {
-//                if ($jour > $today['jour'])
-//                    $annees--;
-//            }
-//            else
-//                $annees--;
-//        }
-        if($annees < 18 || $annees > 26):
-            return false;
         else:
-            return true;
+
+            return tr_redirect()->toHome('/')->now();
+
         endif;
+
     }
 
-
-    public function random($car) {
-        $string = "";
-        $chaine = "1234567890";
-        srand((double)microtime()*1000000);
-        for($i=0; $i<$car; $i++) {
-            $string .= $chaine[rand()%strlen($chaine)];
-        }
-        return $string;
-    }
-
-    static function set_html_content_type(){
-        return 'text/html';
-    }
-
-    static function custom_wp_mail_from_name( $original_email_from ) {
-        return 'L\'équipe Orangina';
-    }
 }

@@ -1,111 +1,76 @@
-<div class="uk-background-norepeat uk-background-cover uk-background-center-center" style="background-image: url('<?php echo get_template_directory_uri(); ?>/img/fond-pied.jpg');">
 
-    <div class="uk-grid-collapse" uk-grid>
-        <div class="uk-width-1-4 uk-visible@l uk-height-auto uk-background-norepeat uk-background-contain uk-background-center-left" style="background-image: url('<?php echo get_template_directory_uri(); ?>/img/Miss-orangina.png');">
 
-        </div>
-        <div class="uk-width-1-1 uk-width-1-3@l uk-height-auto uk-background-norepeat uk-background-contain uk-background-center-center" style="background-image: url(<?= wp_get_attachment_image_src(tr_options_field('options.footer_image'), 'full')[0]; ?>);">
+<div class="uk-section uk-background-secondary uk-section-footer">
+    <div class="uk-container uk-padding-large uk-padding-remove-vertical uk-container-small">
 
-        </div>
-        <div class="uk-width-expand uk-padding uk-padding-remove-horizontal uk-position-relative">
-            <div class="uk-margin-left uk-margin-right">
-                <h3 class="single-font-flavour uk-text-center uk-h2 uk-text-white">Laissez un message</h3>
-
-                <?php echo do_shortcode(tr_options_field('options.form_contact')); ?>
+        <div class="uk-grid-match uk-child-width-1-2@m" uk-grid>
+            <div class="uk-flex uk-flex-left">
+                <div class="uk-width-1-2">
+                    <img src="<?= wp_get_attachment_image_src(tr_options_field('options.footer_image'), 'full')[0]; ?>" class="">
+                </div>
+                <h5 class="uk-text-white uk-margin-remove"><?= bloginfo('description') ?></h5>
+            </div>
+            <div class="">
+                <h4 class="uk-text-white">Qui sommes nous ?</h4>
+                <?php
+                $defaults = array(
+                    'container'       => '',
+                    'container_class' => '',
+                    'menu_class' => 'uk-list uk-margin-remove',
+                    'theme_location' => 'footer',
+                    'items_wrap' => '<ul id="%1$s" class="%2$s">%3$s</ul>',
+                    'menu' => ''
+                );
+                wp_nav_menu($defaults);
+                ?>
             </div>
         </div>
-        <div class="uk-width-1-1 uk-padding-small uk-flex uk-flex-center" style="border-top: 1px solid #fff;">
 
-            <ul class="uk-subnav uk-subnav-divider uk-flex uk-flex-center">
-                <li class="uk-text-white uk-text-lowercase uk-text-small single-font-flavour">All Copyrights Reserved</li>
-                <li class="uk-text-white uk-text-lowercase uk-text-small single-font-flavour">2016 - <?= date('Y'); ?></li>
-                <li class="single-font-flavour uk-text-white uk-text-small"><a href="#" class="uk-text-white uk-margin-small-right" target="_blank">Accent Com</a>  designed by  <a href="#" class="uk-text-white uk-text-lowercase uk-margin-small-left" target="_blank">Aligodu</a> </li>
-            </ul>
-
-        </div>
     </div>
-
-
+</div>
+<div class="uk-footer">
+    <div class="uk-container uk-padding-large uk-padding-remove-vertical">
+        <p class="uk-text-small uk-padding-small uk-text-center">
+            © 2019
+            <a href="<?= home_url() ?>">Charliescorte</a>,
+            <a href="<?= get_the_permalink(tr_options_field('options.page_condition')) ?>">Termes et conditions</a>. Pour vous inscrire sur le site vous devez avoir plus de 18 ans le jour
+            de l’inscription.</p>
+    </div>
 </div>
 
 
+<div id="modal-full" uk-modal>
+    <div class="uk-modal-dialog uk-modal-body">
+        <button class="uk-modal-close-outside" type="button" uk-close></button>
+        <h2 class="uk-modal-title uk-text-center uk-text-danger-c uk-margin-bottom">Reservation des escorts</h2>
+
+        <div class="uk-margin-medium-bottom uk-text-center uk-text-lead">
+            Bienvenu sur charliescort.tk <br>
+            Les réservations d'escort seront disponibles très bientôt.
+        </div>
+
+        <div class="uk-grid-small uk-child-width-auto uk-margin uk-flex-center" uk-grid uk-countdown="date: 2020-01-30T00:00:00+00:00">
+            <div>
+                <div class="uk-countdown-number uk-countdown-days"></div>
+            </div>
+            <div class="uk-countdown-separator">:</div>
+            <div>
+                <div class="uk-countdown-number uk-countdown-hours"></div>
+            </div>
+            <div class="uk-countdown-separator">:</div>
+            <div>
+                <div class="uk-countdown-number uk-countdown-minutes"></div>
+            </div>
+            <div class="uk-countdown-separator">:</div>
+            <div>
+                <div class="uk-countdown-number uk-countdown-seconds"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php wp_footer(); ?>
 
-<script>
-    // Load the SDK asynchronously
-    (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s); js.id = id;
-        js.async = true;
-        js.src = "//connect.facebook.net/en_US/sdk.js";
-        fjs.parentNode.insertBefore(js, fjs);
-    }(document, 'script', 'facebook-jssdk'));
-</script>
-
-<script>
-    window.fbAsyncInit = function() {
-        FB.init({
-            appId      : "<?= tr_options_field('options.facebook_appid') ? tr_options_field('options.facebook_appid') : '' ?>",
-            cookie     : true,
-            xfbml      : true,
-            version    : "<?= tr_options_field('options.facebook_version') ? tr_options_field('options.facebook_version') : 'v2.8' ?>" // Use whatever version is latest at this time
-        });
-    };
-
-    function fb_login(){
-        FB.login(function(response){
-            var grantedScopes = response.authResponse.grantedScopes;
-
-            if (response.status === 'connected') {
-                if(grantedScopes.indexOf('email') !== -1 || grantedScopes.indexOf('contact_email') !== -1){
-
-                    window.location.replace('<?php echo get_site_url()."/facebook/connect"; ?>');
-
-                } else {
-                    FB.api("/me/permissions", "delete", function(response){
-                        alert('Authorization Failed. Email Required.');
-                    });
-                }
-            }
-        }, {
-            scope: 'public_profile, email',
-            return_scopes: true
-        });
-
-    };
-
-    function fb_vote(idcandidat, idselection){
-        FB.login(function(response){
-            var grantedScopes = response.authResponse.grantedScopes;
-
-            if (response.status === 'connected') {
-                if(grantedScopes.indexOf('email') !== -1 || grantedScopes.indexOf('contact_email') !== -1){
-
-                    window.location.replace('<?= tr_redirect()->toHome('facebook/vote/', '')->url; ?>'+idcandidat+'/'+idselection);
-
-                } else {
-                    FB.api("/me/permissions", "delete", function(response){
-                        alert('Authorization Failed. Email Required.');
-                    });
-                }
-            }
-        }, {
-            scope: 'public_profile, email',
-            return_scopes: true
-        });
-    }
-
-    jQuery('.fb-login').on('click', function(e){
-        e.preventDefault();
-        fb_login();
-    });
-
-    jQuery('.fb-vote').on('click', function(e){
-        e.preventDefault();
-        fb_vote(jQuery(this).data('candidat'), jQuery(this).data('selection'));
-    });
-</script>
 
 </body>
 

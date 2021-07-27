@@ -186,3 +186,270 @@ function date_naiss($date){
 
     echo $annees;
 }
+
+
+function search($array, $key, $value)
+{
+    $results = array();
+
+    if (is_array($array)) {
+        if (isset($array[$key]) && $array[$key] == $value) {
+            $results[] = $array;
+        }
+
+        foreach ($array as $subarray) {
+            $results = array_merge($results, search($subarray, $key, $value));
+        }
+    }
+
+    return $results;
+}
+
+
+function generateParrainCode($length = 8) {
+    $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    $ret = '';
+    for($i = 0; $i < $length; ++$i) {
+        $random = str_shuffle($chars);
+        $ret .= $random[0];
+    }
+    return $ret;
+}
+
+function random_password($string) {
+    $pattern = " ";
+    $firstPart = substr(strstr(strtolower($string), $pattern, true), 0, 3);
+    $secondPart = substr(strstr(strtolower($string), $pattern, false), 0,3);
+    $nrRand = strtolower(generateParrainCode(4));
+
+    $username = trim($firstPart).trim($nrRand).trim($secondPart);
+    return $username;
+}
+
+function random($car) {
+    $string = "";
+    $chaine = "1234567890";
+    srand((double)microtime()*1000000);
+    for($i=0; $i<$car; $i++) {
+        $string .= $chaine[rand()%strlen($chaine)];
+    }
+    return $string;
+}
+
+function correctWhatsapp($phone, $special_indication = '237', $size = 9, $number_add = '6'){
+
+    $number = $phone;
+
+    if(substr(mb_strtolower($phone,'UTF-8'), 0, strlen($special_indication)) === $special_indication):
+
+        $number = ltrim($phone, $special_indication);
+
+        if(strlen($number) < $size):
+
+            $number .= $number_add.''.$number;
+
+        endif;
+
+    endif;
+
+    return $number;
+}
+
+function nationalite(){
+    return array(
+        'fr' => 'Française',
+        'ch' => 'Suisse',
+        'de' => 'Allemande',
+        'be' => 'Belge',
+        'it' => 'Italienne',
+        'af' => 'Afghane',
+        'al' => 'Albanaise',
+        'dz' => 'Algerienne',
+        'us' => 'Americaine',
+        'ad' => 'Andorrane',
+        'ao' => 'Angolaise',
+        'ag' => 'Antiguaise et barbudienne',
+        'ar' => 'Argentine',
+        'am' => 'Armenienne',
+        'au' => 'Australienne',
+        'at' => 'Autrichienne',
+        'az' => 'Azerbaïdjanaise',
+        'bs' => 'Bahamienne',
+        'bh' => 'Bahreinienne',
+        'bd' => 'Bangladaise',
+        'bb' => 'Barbadienne',
+        'bz' => 'Belizienne',
+        'bj' => 'Beninoise',
+        'bt' => 'Bhoutanaise',
+        'by' => 'Bielorusse',
+        'mm' => 'Birmane',
+        'gw' => 'Bissau-Guinéenne',
+        'bo' => 'Bolivienne',
+        'ba' => 'Bosnienne',
+        'bw' => 'Botswanaise',
+        'br' => 'Bresilienne',
+        'uk' => 'Britannique',
+        'bn' => 'Bruneienne',
+        'bg' => 'Bulgare',
+        'bf' => 'Burkinabe',
+        'bi' => 'Burundaise',
+        'kh' => 'Cambodgienne',
+        'cm' => 'Camerounaise',
+        'ca' => 'Canadienne',
+        'cv' => 'Cap-verdienne',
+        'cf' => 'Centrafricaine',
+        'cl' => 'Chilienne',
+        'cn' => 'Chinoise',
+        'cy' => 'Chypriote',
+        'co' => 'Colombienne',
+        'km' => 'Comorienne',
+        'cg' => 'Congolaise',
+        'cr' => 'Costaricaine',
+        'hr' => 'Croate',
+        'cu' => 'Cubaine',
+        'dk' => 'Danoise',
+        'dj' => 'Djiboutienne',
+        'do' => 'Dominicaine',
+        'dm' => 'Dominiquaise',
+        'eg' => 'Egyptienne',
+        'ae' => 'Emirienne',
+        'gq' => 'Equato-guineenne',
+        'ec' => 'Equatorienne',
+        'er' => 'Erythreenne',
+        'es' => 'Espagnole',
+        'tl' => 'Est-timoraise',
+        'ee' => 'Estonienne',
+        'et' => 'Ethiopienne',
+        'fj' => 'Fidjienne',
+        'fi' => 'Finlandaise',
+        'ga' => 'Gabonaise',
+        'gm' => 'Gambienne',
+        'ge' => 'Georgienne',
+        'gh' => 'Ghaneenne',
+        'gd' => 'Grenadienne',
+        'gt' => 'Guatemalteque',
+        'gn' => 'Guineenne',
+        'gf' => 'Guyanienne',
+        'ht' => 'Haïtienne',
+        'gr' => 'Hellenique',
+        'hn' => 'Hondurienne',
+        'hu' => 'Hongroise',
+        'in' => 'Indienne',
+        'id' => 'Indonesienne',
+        'iq' => 'Irakienne',
+        'ie' => 'Irlandaise',
+        'is' => 'Islandaise',
+        'il' => 'Israélienne',
+        'ci' => 'Ivoirienne',
+        'jm' => 'Jamaïcaine',
+        'jp' => 'Japonaise',
+        'jo' => 'Jordanienne',
+        'kz' => 'Kazakhstanaise',
+        'ke' => 'Kenyane',
+        'kg' => 'Kirghize',
+        'ki' => 'Kiribatienne',
+        'kn' => 'Kittitienne-et-nevicienne',
+        'xk​' => 'Kossovienne',
+        'kw' => 'Koweitienne',
+        'la' => 'Laotienne',
+        'ls' => 'Lesothane',
+        'lv' => 'Lettone',
+        'lb' => 'Libanaise',
+        'lr' => 'Liberienne',
+        'ly' => 'Libyenne',
+        'li' => 'Liechtensteinoise',
+        'lt' => 'Lituanienne',
+        'lu' => 'Luxembourgeoise',
+        'mk' => 'Macedonienne',
+        'my' => 'Malaisienne',
+        'mw' => 'Malawienne',
+        'mv' => 'Maldivienne',
+        'mg' => 'Malgache',
+        'ml' => 'Malienne',
+        'mt' => 'Maltaise',
+        'ma' => 'Marocaine',
+        'mh' => 'Marshallaise',
+        'mu' => 'Mauricienne',
+        'mr' => 'Mauritanienne',
+        'mx' => 'Mexicaine',
+        'fm' => 'Micronesienne',
+        'md' => 'Moldave',
+        'mc' => 'Monegasque',
+        'mn' => 'Mongole',
+        'me' => 'Montenegrine',
+        'mz' => 'Mozambicaine',
+        'na' => 'Namibienne',
+        'nr' => 'Nauruane',
+        'nl' => 'Neerlandaise',
+        'nz' => 'Neo-zelandaise',
+        'np' => 'Nepalaise',
+        'ni' => 'Nicaraguayenne',
+        'ng' => 'Nigeriane',
+        'ne' => 'Nigerienne',
+        'kp' => 'Nord-coréenne',
+        'no' => 'Norvegienne',
+        'om' => 'Omanaise',
+        'ug' => 'Ougandaise',
+        'uz' => 'Ouzbeke',
+        'pk' => 'Pakistanaise',
+        'pw' => 'Palau',
+        'ps' => 'Palestinienne',
+        'pa' => 'Panameenne',
+        'pg' => 'Papouane-neoguineenne',
+        'py' => 'Paraguayenne',
+        'pe' => 'Peruvienne',
+        'ph' => 'Philippine',
+        'pl' => 'Polonaise',
+        'pr' => 'Portoricaine',
+        'pt' => 'Portugaise',
+        'qa' => 'Qatarienne',
+        'ro' => 'Roumaine',
+        'ru' => 'Russe',
+        'rw' => 'Rwandaise',
+        'lc' => 'Saint-Lucienne',
+        'sm' => 'Saint-Marinaise',
+        'vc' => 'Saint-Vincentaise-et-Grenadine',
+        'sb' => 'Salomonaise',
+        'sv' => 'Salvadorienne',
+        'ws' => 'Samoane',
+        'st' => 'Santomeenne',
+        'sa' => 'Saoudienne',
+        'sn' => 'Senegalaise',
+        'rs' => 'Serbe',
+        'sc' => 'Seychelloise',
+        'sl' => 'Sierra-leonaise',
+        'sg' => 'Singapourienne',
+        'sk' => 'Slovaque',
+        'si' => 'Slovene',
+        'so' => 'Somalienne',
+        'sd' => 'Soudanaise',
+        'lk' => 'Sri-lankaise',
+        'za' => 'Sud-africaine',
+        'kr' => 'Sud-coréenne',
+        'se' => 'Suedoise',
+        'sr' => 'Surinamaise',
+        'ze' => 'Swazie',
+        'sy' => 'Syrienne',
+        'tj' => 'Tadjike',
+        'tw' => 'Taiwanaise',
+        'tz' => 'Tanzanienne',
+        'td' => 'Tchadienne',
+        'cz' => 'Tcheque',
+        'th' => 'Thaïlandaise',
+        'tg' => 'Togolaise',
+        'ton' => 'Tonguienne',
+        'tt' => 'Trinidadienne',
+        'tn' => 'Tunisienne',
+        'tm' => 'Turkmene',
+        'tr' => 'Turque',
+        'tv' => 'Tuvaluane',
+        'ua' => 'Ukrainienne',
+        'uy' => 'Uruguayenne',
+        'vu' => 'Vanuatuane',
+        've' => 'Venezuelienne',
+        'vn' => 'Vietnamienne',
+        'ye' => 'Yemenite',
+        'zm' => 'Zambienne',
+        'zw' => 'Zimbabweenne',
+    );
+}
