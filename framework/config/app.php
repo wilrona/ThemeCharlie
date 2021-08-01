@@ -63,7 +63,7 @@ return [
         'user' => '\App\Models\User',
         'form' => '\TypeRocket\Elements\Form'
     ],
-    
+
     /*
     |--------------------------------------------------------------------------
     | Template Engine
@@ -93,7 +93,7 @@ return [
     ],
 
     'api_keys' => [
-        'google_maps' => 'AIzaSyCZz_Pizm04BAJIVGqn8fr1ywWEhZ42KPY'
+        'google_maps' => ''
     ],
 
     /*
